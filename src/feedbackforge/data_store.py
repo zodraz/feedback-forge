@@ -2,46 +2,109 @@
 FeedbackForge Data Store
 ========================
 
-In-memory data store for feedback items with query methods.
+Data store for feedback items with Cosmos DB backend and in-memory fallback.
 """
 
+import logging
+import os
 import random
+from dataclasses import asdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from azure.cosmos import CosmosClient, PartitionKey, exceptions
+from azure.identity import DefaultAzureCredential
+
 from .models import FeedbackItem, SurveyResponse
+from .telemetry import trace_operation
+
+logger = logging.getLogger(__name__)
 
 
-class FeedbackDataStore:
-    """Data store for feedback - can be populated from workflow results or mock data."""
+class CosmosDBFeedbackStore:
+    """Cosmos DB-backed feedback data store with auto-initialization."""
 
-    def __init__(self):
-        self.feedback: List[FeedbackItem] = []
-        self.analysis_results: Optional[Dict[str, Any]] = None
-        self.alerts: List[Dict[str, Any]] = []
+    def __init__(
+        self,
+        endpoint: str,
+        key: Optional[str] = None,
+        database_name: str = "feedbackforge",
+        container_name: str = "feedback"
+    ):
+        """
+        Initialize Cosmos DB feedback store.
 
-    def load_from_workflow_results(self, results: Dict[str, Any], surveys: List[SurveyResponse]) -> None:
-        """Load data from workflow analysis results."""
-        self.analysis_results = results
-        for survey in surveys:
-            topics_data = results.get("parallel_analysis", {}).get("topics", {})
+        Args:
+            endpoint: Cosmos DB endpoint URL
+            key: Optional primary key. If not provided, uses DefaultAzureCredential
+            database_name: Database name
+            container_name: Container name
+        """
+        self.endpoint = endpoint
+        self.database_name = database_name
+        self.container_name = container_name
+        self.alerts_container_name = "alerts"
 
-            self.feedback.append(FeedbackItem(
-                id=survey.id,
-                text=survey.text,
-                sentiment="negative" if survey.rating and survey.rating <= 2 else "positive" if survey.rating and survey.rating >= 4 else "neutral",
-                sentiment_score=(survey.rating - 3) / 2 if survey.rating else 0,
-                topics=list(topics_data.get("topic_distribution", {}).keys()) if topics_data else [],
-                customer_segment=survey.customer_segment or "Unknown",
-                customer_id=survey.customer_id or survey.id,
-                customer_name=survey.customer_name or f"Customer {survey.id}",
-                rating=survey.rating or 3,
-                timestamp=datetime.fromisoformat(survey.timestamp) if survey.timestamp else datetime.now(),
-                product_version=survey.product_version or "Unknown",
-                platform=survey.platform,
-            ))
+        # Initialize client with key or DefaultAzureCredential
+        if key:
+            logger.info("🔑 Using primary key authentication for Cosmos DB")
+            self.client = CosmosClient(endpoint, credential=key)
+        else:
+            logger.info("🔐 Using DefaultAzureCredential for Cosmos DB")
+            credential = DefaultAzureCredential()
+            self.client = CosmosClient(endpoint, credential=credential)
 
-    def load_mock_data(self) -> None:
+        # Initialize database and containers
+        self._initialize_database()
+
+        # Auto-populate mock data if empty
+        self._ensure_data_exists()
+
+    def _initialize_database(self):
+        """Create database and containers if they don't exist."""
+        try:
+            # Create database
+            self.database = self.client.create_database_if_not_exists(id=self.database_name)
+            logger.info(f"✅ Database '{self.database_name}' ready")
+
+            # Create feedback container with partition key
+            # Note: Don't set offer_throughput for serverless accounts
+            self.container = self.database.create_container_if_not_exists(
+                id=self.container_name,
+                partition_key=PartitionKey(path="/customer_segment")
+            )
+            logger.info(f"✅ Container '{self.container_name}' ready")
+
+            # Create alerts container
+            self.alerts_container = self.database.create_container_if_not_exists(
+                id=self.alerts_container_name,
+                partition_key=PartitionKey(path="/status")
+            )
+            logger.info(f"✅ Container '{self.alerts_container_name}' ready")
+
+        except exceptions.CosmosHttpResponseError as e:
+            logger.error(f"Failed to initialize Cosmos DB: {e}")
+            raise
+
+    def _ensure_data_exists(self):
+        """Check if data exists, if not, populate with mock data."""
+        try:
+            # Query to count items
+            query = "SELECT VALUE COUNT(1) FROM c"
+            items = list(self.container.query_items(query=query, enable_cross_partition_query=True))
+            count = items[0] if items else 0
+
+            if count == 0:
+                logger.info("📊 No data found in Cosmos DB. Initializing with mock data...")
+                self.load_mock_data()
+                logger.info(f"✅ Initialized with {len(self._generate_mock_feedback())} mock feedback items")
+            else:
+                logger.info(f"✅ Found {count} existing feedback items in Cosmos DB")
+
+        except Exception as e:
+            logger.error(f"Error checking data existence: {e}")
+
+    def _generate_mock_feedback(self) -> List[FeedbackItem]:
         """Generate realistic mock feedback data."""
         platforms = ["iOS", "Android", "Web", "Desktop"]
         versions = ["2.0.3", "2.0.2", "2.0.1", "1.9.5"]
@@ -60,6 +123,7 @@ class FeedbackDataStore:
         ]
         all_customers = enterprise_customers + smb_customers + individual_customers
 
+        feedback_list = []
         feedback_id = 1
         now = datetime.now()
 
@@ -67,7 +131,7 @@ class FeedbackDataStore:
         for _ in range(47):
             customer = random.choice(all_customers)
             segment = "Enterprise" if customer[0].startswith("ENT") else ("SMB" if customer[0].startswith("SMB") else "Individual")
-            self.feedback.append(FeedbackItem(
+            feedback_list.append(FeedbackItem(
                 id=f"FB{feedback_id:04d}",
                 text=random.choice([
                     "App crashes every time I open settings on iOS.",
@@ -87,7 +151,7 @@ class FeedbackDataStore:
         for _ in range(31):
             customer = random.choice(smb_customers)
             competitors = random.choice([["Competitor X"], ["Competitor Y"], ["Competitor X", "Competitor Z"]])
-            self.feedback.append(FeedbackItem(
+            feedback_list.append(FeedbackItem(
                 id=f"FB{feedback_id:04d}",
                 text=random.choice([
                     f"Pricing is too expensive for SMBs. {competitors[0]} offers better value.",
@@ -106,7 +170,7 @@ class FeedbackDataStore:
         for _ in range(28):
             customer = random.choice(enterprise_customers + smb_customers)
             segment = "Enterprise" if customer[0].startswith("ENT") else "SMB"
-            self.feedback.append(FeedbackItem(
+            feedback_list.append(FeedbackItem(
                 id=f"FB{feedback_id:04d}",
                 text=random.choice([
                     "Support team takes too long to respond. Waited 3 days.",
@@ -132,7 +196,7 @@ class FeedbackDataStore:
             for text, topics, rating in positive_texts:
                 customer = random.choice(all_customers)
                 segment = "Enterprise" if customer[0].startswith("ENT") else ("SMB" if customer[0].startswith("SMB") else "Individual")
-                self.feedback.append(FeedbackItem(
+                feedback_list.append(FeedbackItem(
                     id=f"FB{feedback_id:04d}",
                     text=text, sentiment="positive", sentiment_score=0.8,
                     topics=topics, customer_segment=segment,
@@ -146,7 +210,7 @@ class FeedbackDataStore:
         for _ in range(23):
             customer = random.choice(enterprise_customers + smb_customers)
             segment = "Enterprise" if customer[0].startswith("ENT") else "SMB"
-            self.feedback.append(FeedbackItem(
+            feedback_list.append(FeedbackItem(
                 id=f"FB{feedback_id:04d}",
                 text=random.choice([
                     "Checkout not working! Can't complete my purchase.",
@@ -161,6 +225,332 @@ class FeedbackDataStore:
             ))
             feedback_id += 1
 
+        return feedback_list
+
+    def load_mock_data(self) -> None:
+        """Load mock feedback data into Cosmos DB."""
+        feedback_list = self._generate_mock_feedback()
+
+        for feedback in feedback_list:
+            self._upsert_feedback(feedback)
+
+        logger.info(f"✅ Loaded {len(feedback_list)} mock feedback items")
+
+    def _upsert_feedback(self, feedback: FeedbackItem):
+        """Insert or update a feedback item."""
+        try:
+            item = asdict(feedback)
+            # Convert datetime to ISO string
+            item['timestamp'] = feedback.timestamp.isoformat()
+            self.container.upsert_item(body=item)
+        except exceptions.CosmosHttpResponseError as e:
+            logger.error(f"Failed to upsert feedback {feedback.id}: {e}")
+
+    @property
+    def feedback(self) -> List[FeedbackItem]:
+        """Get all feedback items (for compatibility with old interface)."""
+        try:
+            query = "SELECT * FROM c"
+            items = list(self.container.query_items(query=query, enable_cross_partition_query=True))
+            return [self._item_to_feedback(item) for item in items]
+        except Exception as e:
+            logger.error(f"Failed to fetch feedback: {e}")
+            return []
+
+    @property
+    def alerts(self) -> List[Dict[str, Any]]:
+        """Get all alerts."""
+        try:
+            query = "SELECT * FROM c"
+            return list(self.alerts_container.query_items(query=query, enable_cross_partition_query=True))
+        except Exception as e:
+            logger.error(f"Failed to fetch alerts: {e}")
+            return []
+
+    def _item_to_feedback(self, item: Dict) -> FeedbackItem:
+        """Convert Cosmos DB item to FeedbackItem."""
+        # Filter out Cosmos DB system fields (they start with underscore)
+        clean_item = {k: v for k, v in item.items() if not k.startswith('_')}
+
+        # Convert ISO string back to datetime
+        if isinstance(clean_item.get('timestamp'), str):
+            clean_item['timestamp'] = datetime.fromisoformat(clean_item['timestamp'])
+
+        return FeedbackItem(**clean_item)
+
+    @trace_operation("cosmos.get_weekly_summary")
+    def get_weekly_summary(self) -> Dict[str, Any]:
+        """Get summary statistics for the past week."""
+        try:
+            now = datetime.now()
+            week_ago = now - timedelta(days=7)
+
+            query = f"""
+            SELECT * FROM c
+            WHERE c.timestamp >= '{week_ago.isoformat()}'
+            """
+            items = list(self.container.query_items(query=query, enable_cross_partition_query=True))
+
+            if not items:
+                return {"total_responses": 0, "sentiment": {}, "top_issues": [], "urgent_count": 0}
+
+            total = len(items)
+            positive = len([i for i in items if i.get('sentiment') == "positive"])
+            negative = len([i for i in items if i.get('sentiment') == "negative"])
+            neutral = total - positive - negative
+
+            # Count topics
+            topic_counts: Dict[str, int] = {}
+            for item in items:
+                for topic in item.get('topics', []):
+                    topic_counts[topic] = topic_counts.get(topic, 0) + 1
+
+            top_issues = sorted(topic_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+
+            return {
+                "total_responses": total,
+                "sentiment": {
+                    "positive_pct": round(positive / total * 100),
+                    "negative_pct": round(negative / total * 100),
+                    "neutral_pct": round(neutral / total * 100),
+                },
+                "top_issues": top_issues,
+                "urgent_count": len([i for i in items if i.get('is_urgent')]),
+            }
+        except Exception as e:
+            logger.error(f"Failed to get weekly summary: {e}")
+            return {"total_responses": 0, "sentiment": {}, "top_issues": [], "urgent_count": 0}
+
+    @trace_operation("cosmos.get_issue_details")
+    def get_issue_details(self, topic: str) -> Dict[str, Any]:
+        """Get detailed analysis for a specific issue/topic."""
+        try:
+            now = datetime.now()
+            week_ago = now - timedelta(days=7)
+
+            query = f"""
+            SELECT * FROM c
+            WHERE ARRAY_CONTAINS(c.topics, '{topic.lower()}', true)
+            AND c.timestamp >= '{week_ago.isoformat()}'
+            """
+            items = list(self.container.query_items(query=query, enable_cross_partition_query=True))
+
+            if not items:
+                return {"topic": topic, "total_mentions": 0, "message": "No recent data for this topic"}
+
+            negative_pct = round(len([i for i in items if i.get('sentiment') == "negative"]) / len(items) * 100)
+
+            versions: Dict[str, int] = {}
+            platforms: Dict[str, int] = {}
+            for item in items:
+                version = item.get('product_version', 'Unknown')
+                versions[version] = versions.get(version, 0) + 1
+                platform = item.get('platform')
+                if platform:
+                    platforms[platform] = platforms.get(platform, 0) + 1
+
+            priority = "P0 - Critical" if len(items) > 30 and negative_pct > 80 else \
+                       "P1 - High" if len(items) > 20 and negative_pct > 60 else \
+                       "P2 - Medium" if len(items) > 10 else "P3 - Low"
+
+            return {
+                "topic": topic,
+                "total_mentions": len(items),
+                "negative_sentiment_pct": negative_pct,
+                "affected_versions": versions,
+                "affected_platforms": platforms,
+                "sample_feedback": [i.get('text') for i in items[:3]],
+                "priority": priority,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get issue details for {topic}: {e}")
+            return {"topic": topic, "error": str(e)}
+
+    @trace_operation("cosmos.get_competitor_analysis")
+    def get_competitor_analysis(self) -> Dict[str, Any]:
+        """Get competitive intelligence from feedback."""
+        try:
+            now = datetime.now()
+            month_ago = now - timedelta(days=30)
+
+            query = f"""
+            SELECT * FROM c
+            WHERE c.timestamp >= '{month_ago.isoformat()}'
+            AND ARRAY_LENGTH(c.competitor_mentions) > 0
+            """
+            items = list(self.container.query_items(query=query, enable_cross_partition_query=True))
+
+            competitor_data: Dict[str, Dict[str, Any]] = {}
+            for item in items:
+                for comp in item.get('competitor_mentions', []):
+                    if comp not in competitor_data:
+                        competitor_data[comp] = {"mentions": 0, "reasons": {}}
+                    competitor_data[comp]["mentions"] += 1
+                    for topic in item.get('topics', []):
+                        if topic != "competitive":
+                            competitor_data[comp]["reasons"][topic] = competitor_data[comp]["reasons"].get(topic, 0) + 1
+
+            competitors = [
+                {
+                    "name": name,
+                    "mentions": data["mentions"],
+                    "win_reason": max(data["reasons"], key=data["reasons"].get) if data["reasons"] else "Unknown"
+                }
+                for name, data in sorted(competitor_data.items(), key=lambda x: x[1]["mentions"], reverse=True)
+            ]
+
+            churn_risks = [
+                {
+                    "customer_id": item.get('customer_id'),
+                    "customer_name": item.get('customer_name'),
+                    "segment": item.get('customer_segment'),
+                    "competitor": item.get('competitor_mentions', [])[0] if item.get('competitor_mentions') else "Unknown"
+                }
+                for item in items if item.get('sentiment') == "negative"
+            ][:12]
+
+            return {
+                "competitors": competitors,
+                "churn_risk_customers": churn_risks,
+                "total_churn_risks": len(churn_risks)
+            }
+        except Exception as e:
+            logger.error(f"Failed to get competitor analysis: {e}")
+            return {"competitors": [], "churn_risk_customers": [], "total_churn_risks": 0}
+
+    @trace_operation("cosmos.get_customer_context")
+    def get_customer_context(self, customer_id: str) -> Dict[str, Any]:
+        """Get context for a specific customer."""
+        try:
+            query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}' ORDER BY c.timestamp DESC"
+            items = list(self.container.query_items(query=query, enable_cross_partition_query=True))[:5]
+
+            if not items:
+                return {"error": f"No feedback found for {customer_id}"}
+
+            negative_count = len([i for i in items if i.get('sentiment') == "negative"])
+            segment = items[0].get('customer_segment', 'Unknown')
+
+            return {
+                "customer_id": customer_id,
+                "customer_name": items[0].get('customer_name', 'Unknown'),
+                "segment": segment,
+                "account_value": f"${random.randint(50, 150)}K ARR" if segment == "Enterprise" else f"${random.randint(5, 25)}K ARR",
+                "escalation_risk": "HIGH" if negative_count >= 3 else "MEDIUM" if negative_count >= 1 else "LOW",
+                "recent_feedback": [
+                    {
+                        "text": i.get('text'),
+                        "sentiment": i.get('sentiment'),
+                        "days_ago": (datetime.now() - datetime.fromisoformat(i.get('timestamp'))).days
+                    }
+                    for i in items
+                ],
+            }
+        except Exception as e:
+            logger.error(f"Failed to get customer context for {customer_id}: {e}")
+            return {"error": str(e)}
+
+    @trace_operation("cosmos.detect_anomalies")
+    def detect_anomalies(self) -> List[Dict[str, Any]]:
+        """Detect unusual patterns in recent feedback."""
+        try:
+            now = datetime.now()
+            two_hours_ago = now - timedelta(hours=2)
+
+            query = f"""
+            SELECT * FROM c
+            WHERE c.timestamp >= '{two_hours_ago.isoformat()}'
+            """
+            items = list(self.container.query_items(query=query, enable_cross_partition_query=True))
+
+            topic_counts: Dict[str, int] = {}
+            for item in items:
+                for topic in item.get('topics', []):
+                    topic_counts[topic] = topic_counts.get(topic, 0) + 1
+
+            anomalies = []
+            for topic, count in topic_counts.items():
+                if count > 10:
+                    affected = [i for i in items if topic in i.get('topics', [])]
+                    negative_count = len([i for i in affected if i.get('sentiment') == "negative"])
+                    anomalies.append({
+                        "topic": topic,
+                        "count": count,
+                        "severity": "CRITICAL" if count > 20 else "HIGH",
+                        "affected_customers": len(affected),
+                        "negative_pct": round(negative_count / len(affected) * 100) if affected else 0,
+                    })
+
+            return anomalies
+        except Exception as e:
+            logger.error(f"Failed to detect anomalies: {e}")
+            return []
+
+    @trace_operation("cosmos.set_alert")
+    def set_alert(self, condition: str, threshold: float) -> Dict[str, Any]:
+        """Set up an alert for monitoring."""
+        try:
+            alert = {
+                "id": f"ALERT{datetime.now().timestamp()}",
+                "condition": condition,
+                "threshold": threshold,
+                "status": "active",
+                "created_at": datetime.now().isoformat()
+            }
+            self.alerts_container.create_item(body=alert)
+            return alert
+        except Exception as e:
+            logger.error(f"Failed to set alert: {e}")
+            return {"error": str(e)}
+
+    @trace_operation("cosmos.get_surveys")
+    def get_surveys(self) -> List[SurveyResponse]:
+        """Convert feedback items to SurveyResponse for workflow mode."""
+        try:
+            feedback_items = self.feedback
+            return [
+                SurveyResponse(
+                    id=f.id,
+                    text=f.text,
+                    rating=f.rating,
+                    timestamp=f.timestamp.isoformat(),
+                    customer_segment=f.customer_segment,
+                    product_version=f.product_version,
+                    customer_id=f.customer_id,
+                    customer_name=f.customer_name,
+                    platform=f.platform,
+                )
+                for f in feedback_items
+            ]
+        except Exception as e:
+            logger.error(f"Failed to get surveys: {e}")
+            return []
+
+
+class InMemoryFeedbackStore:
+    """In-memory fallback data store."""
+
+    def __init__(self):
+        self.feedback_list: List[FeedbackItem] = []
+        self.analysis_results: Optional[Dict[str, Any]] = None
+        self.alerts_list: List[Dict[str, Any]] = []
+        self.load_mock_data()
+
+    def load_mock_data(self) -> None:
+        """Generate realistic mock feedback data."""
+        # Use the same mock data generation as Cosmos
+        cosmos_store = CosmosDBFeedbackStore.__new__(CosmosDBFeedbackStore)
+        self.feedback_list = cosmos_store._generate_mock_feedback()
+
+    @property
+    def feedback(self) -> List[FeedbackItem]:
+        return self.feedback_list
+
+    @property
+    def alerts(self) -> List[Dict[str, Any]]:
+        return self.alerts_list
+
+    @trace_operation("memory.get_weekly_summary")
     def get_weekly_summary(self) -> Dict[str, Any]:
         """Get summary statistics for the past week."""
         now = datetime.now()
@@ -293,7 +683,7 @@ class FeedbackDataStore:
     def set_alert(self, condition: str, threshold: float) -> Dict[str, Any]:
         """Set up an alert for monitoring."""
         alert = {"id": f"ALERT{len(self.alerts) + 1:03d}", "condition": condition, "threshold": threshold, "status": "active"}
-        self.alerts.append(alert)
+        self.alerts_list.append(alert)
         return alert
 
     def get_surveys(self) -> List[SurveyResponse]:
@@ -314,6 +704,48 @@ class FeedbackDataStore:
         ]
 
 
-# Global data store - initialize with mock data
-feedback_store = FeedbackDataStore()
-feedback_store.load_mock_data()
+# Initialize global data store
+def create_feedback_store():
+    """Create feedback store with Cosmos DB or fall back to in-memory."""
+    cosmos_endpoint = os.environ.get("COSMOS_DB_ENDPOINT")
+    cosmos_key = os.environ.get("COSMOS_DB_KEY")  # Primary key (optional)
+    auth_method = os.environ.get("COSMOS_DB_AUTH_METHOD", "auto").lower()
+
+    if cosmos_endpoint:
+        try:
+            logger.info("🚀 Initializing Cosmos DB feedback store...")
+
+            # Determine which credential to use based on auth_method
+            if auth_method == "default_credential":
+                # Force DefaultAzureCredential
+                logger.info("🔐 Auth method: DefaultAzureCredential (forced by COSMOS_DB_AUTH_METHOD)")
+                key_to_use = None
+            elif auth_method == "primary_key":
+                # Force primary key
+                if not cosmos_key:
+                    raise ValueError("COSMOS_DB_AUTH_METHOD=primary_key but COSMOS_DB_KEY is not set")
+                logger.info("🔑 Auth method: Primary key (forced by COSMOS_DB_AUTH_METHOD)")
+                key_to_use = cosmos_key
+            else:
+                # Auto mode: use key if provided, otherwise DefaultAzureCredential
+                logger.info("⚙️ Auth method: Auto (will use key if set, otherwise DefaultAzureCredential)")
+                key_to_use = cosmos_key
+
+            store = CosmosDBFeedbackStore(
+                endpoint=cosmos_endpoint,
+                key=key_to_use,
+                database_name=os.environ.get("COSMOS_DB_DATABASE", "feedbackforge"),
+                container_name=os.environ.get("COSMOS_DB_CONTAINER", "feedback")
+            )
+            logger.info("✅ Using Cosmos DB for feedback storage")
+            return store
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize Cosmos DB: {e}. Falling back to in-memory.")
+            return InMemoryFeedbackStore()
+    else:
+        logger.info("ℹ️ COSMOS_DB_ENDPOINT not set. Using in-memory feedback storage.")
+        return InMemoryFeedbackStore()
+
+
+# Global data store instance
+feedback_store = create_feedback_store()

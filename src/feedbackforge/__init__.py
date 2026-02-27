@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .models import SurveyResponse, AnalysisState, FeedbackItem
-from .data_store import FeedbackDataStore, feedback_store
+from .data_store import feedback_store, CosmosDBFeedbackStore, InMemoryFeedbackStore
 from .workflow import SurveyAnalysisWorkflow
 from .dashboard_agent import create_dashboard_agent
 from .server import create_app, run_server
@@ -44,7 +44,8 @@ __all__ = [
     "AnalysisState",
     "FeedbackItem",
     # Data Store
-    "FeedbackDataStore",
+    "CosmosDBFeedbackStore",
+    "InMemoryFeedbackStore",
     "feedback_store",
     # Workflow
     "SurveyAnalysisWorkflow",

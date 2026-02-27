@@ -9,6 +9,7 @@ interface Message {
 }
 
 const AG_UI_URL = "http://localhost:8080/agent";
+const API_BASE_URL = "http://localhost:8080/api";
 
 function App() {
   return (
@@ -23,6 +24,13 @@ function App() {
 }
 
 function Header() {
+  const handleNewConversation = () => {
+    if (confirm("Start a new conversation? Current chat will be saved.")) {
+      localStorage.removeItem('feedbackforge-thread-id');
+      window.location.reload();
+    }
+  };
+
   return (
     <header className="header">
       <div className="header-brand">
@@ -30,6 +38,13 @@ function Header() {
         <h1>FeedbackForge</h1>
       </div>
       <p className="header-tagline">Executive Dashboard Assistant</p>
+      <button
+        onClick={handleNewConversation}
+        className="new-conversation-btn"
+        title="Start a new conversation"
+      >
+        ➕ New
+      </button>
     </header>
   );
 }
@@ -92,7 +107,30 @@ function ChatContainer() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [threadId] = useState(() => `thread-${Date.now()}`);
+
+  // Persist userId in localStorage (unique per device/browser)
+  const [userId] = useState(() => {
+    const stored = localStorage.getItem('feedbackforge-user-id');
+    if (stored) {
+      return stored;
+    }
+    // Generate a unique user ID for this device/browser
+    const newUserId = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem('feedbackforge-user-id', newUserId);
+    return newUserId;
+  });
+
+  // Persist threadId in localStorage so it survives page refresh
+  const [threadId] = useState(() => {
+    const stored = localStorage.getItem('feedbackforge-thread-id');
+    if (stored) {
+      return stored;
+    }
+    const newThreadId = `thread-${Date.now()}`;
+    localStorage.setItem('feedbackforge-thread-id', newThreadId);
+    return newThreadId;
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -111,6 +149,66 @@ function ChatContainer() {
     window.addEventListener('quickAction', handleQuickAction as EventListener);
     return () => window.removeEventListener('quickAction', handleQuickAction as EventListener);
   }, []);
+
+  // Load existing session on mount
+  useEffect(() => {
+    const loadExistingSession = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/sessions/${threadId}?user_id=${userId}`);
+        if (response.ok) {
+          const session = await response.json();
+          if (session.messages && session.messages.length > 0) {
+            const loadedMessages = session.messages.map((m: any) => ({
+              ...m,
+              timestamp: new Date(m.timestamp || Date.now()),
+            }));
+            setMessages(loadedMessages);
+            console.log(`✅ Loaded session ${threadId} for user ${userId} with ${loadedMessages.length} messages`);
+          }
+        }
+      } catch (error) {
+        console.log("No existing session found, starting fresh");
+      }
+    };
+
+    loadExistingSession();
+  }, [threadId, userId]);
+
+  // Auto-save session when messages change
+  useEffect(() => {
+    const saveSession = async () => {
+      if (messages.length <= 1) return; // Skip if only welcome message
+
+      try {
+        const messagesToSave = messages.map(m => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp.toISOString(),
+        }));
+
+        await fetch(`${API_BASE_URL}/sessions/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            thread_id: threadId,
+            user_id: userId,
+            messages: messagesToSave,
+            metadata: {
+              title: messages[1]?.content.substring(0, 50) || "Untitled",
+              created_at: messages[0]?.timestamp.toISOString(),
+            },
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to save session:", error);
+      }
+    };
+
+    // Debounce save (wait 1 second after last message)
+    const timeoutId = setTimeout(saveSession, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [messages, threadId, userId]);
 
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
