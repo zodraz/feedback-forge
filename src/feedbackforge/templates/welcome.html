@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FeedbackForge - Executive Dashboard Assistant</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .status {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .content {
+            padding: 40px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        .endpoints {
+            display: grid;
+            gap: 15px;
+        }
+        .endpoint {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+        .get { background: #10b981; color: white; }
+        .post { background: #3b82f6; color: white; }
+        .endpoint-path {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        .endpoint-desc {
+            color: #6b7280;
+            font-size: 0.95em;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #10b981;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .stat {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .footer {
+            background: #f7fafc;
+            padding: 20px 40px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 FeedbackForge</h1>
+            <p>Executive Dashboard Assistant for Customer Feedback Analysis</p>
+            <span class="status">● Online</span>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <h2>📊 Statistics</h2>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">{{ feedback_count }}</div>
+                        <div class="stat-label">Feedback Items</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">{{ alerts_count }}</div>
+                        <div class="stat-label">Active Alerts</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🚀 Available Endpoints</h2>
+                <div class="endpoints">
+                    <div class="endpoint">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/docs</span>
+                        </div>
+                        <div class="endpoint-desc">Interactive API Documentation (Swagger UI)</div>
+                        <a href="{{ base_url }}/docs" class="btn" style="margin-top: 10px;">Open API Docs →</a>
+                    </div>
+
+                    <div class="endpoint">
+                        <div class="endpoint-header">
+                            <span class="method post">POST</span>
+                            <span class="endpoint-path">/agent</span>
+                        </div>
+                        <div class="endpoint-desc">AG-UI Protocol endpoint for agent interactions (CopilotKit compatible)</div>
+                    </div>
+
+                    <div class="endpoint">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/health</span>
+                        </div>
+                        <div class="endpoint-desc">Health check endpoint</div>
+                        <a href="{{ base_url }}/health" class="btn" style="margin-top: 10px;">Check Health →</a>
+                    </div>
+
+                    <div class="endpoint">
+                        <div class="endpoint-header">
+                            <span class="method get">GET</span>
+                            <span class="endpoint-path">/info</span>
+                        </div>
+                        <div class="endpoint-desc">Service information and capabilities</div>
+                        <a href="{{ base_url }}/info" class="btn" style="margin-top: 10px;">View Info →</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>💻 Example Usage</h2>
+                <p style="margin-bottom: 10px;">Test the agent endpoint with curl:</p>
+                <div class="code-block">curl -X POST {{ base_url }}/agent \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "Show me this week's feedback summary"}]}'</div>
+            </div>
+
+            <div class="section">
+                <h2>🔧 Agent Capabilities</h2>
+                <ul style="color: #4b5563; line-height: 2;">
+                    <li>✓ Weekly feedback summaries with sentiment analysis</li>
+                    <li>✓ Issue deep-dive with trends and recommendations</li>
+                    <li>✓ Competitive intelligence and churn risk analysis</li>
+                    <li>✓ Customer context and escalation tracking</li>
+                    <li>✓ Anomaly detection for emerging issues</li>
+                    <li>✓ Action item generation and team escalation</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>FeedbackForge v1.0.0 | Powered by Azure AI & Agent Framework | AG-UI Protocol</p>
+        </div>
+    </div>
+</body>
+</html>

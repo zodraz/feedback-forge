@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from agent_framework import Executor, WorkflowContext, handler
-from agent_framework.azure import AzureOpenAIChatClient
+from agent_framework_azure_ai import AzureAIClient
 
 from .models import AnalysisState
 
@@ -33,7 +33,7 @@ def parse_json_response(text: str) -> Dict[str, Any]:
 class InitialOrchestrator(Executor):
     """Initial orchestrator that analyzes input and plans execution."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "orchestrator_initial"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "orchestrator_initial"):
         self.agent = chat_client.create_agent(
             name="InitialOrchestrator",
             instructions="""You are the Initial Orchestrator Agent. Validate survey data, assess quality, plan analysis.
@@ -58,7 +58,7 @@ Return JSON: {"proceed": true/false, "survey_count": N, "quality_assessment": "g
 class DataPreprocessor(Executor):
     """Executor for data preprocessing."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "preprocessor"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "preprocessor"):
         self.agent = chat_client.create_agent(
             name="DataPreprocessor",
             instructions="""Clean and prepare survey data. Return JSON: {"cleaned_count": N, "spam_count": N, "summary": "..."}"""
@@ -81,7 +81,7 @@ class DataPreprocessor(Executor):
 class SentimentAnalyzer(Executor):
     """Sentiment analysis executor."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "sentiment"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "sentiment"):
         self.agent = chat_client.create_agent(
             name="SentimentAnalyzer",
             instructions="""Analyze sentiment. Return JSON: {"overall_distribution": {"positive": %, "negative": %, "neutral": %}, "urgent_flags": [], "summary": "..."}"""
@@ -100,7 +100,7 @@ class SentimentAnalyzer(Executor):
 class TopicExtractor(Executor):
     """Topic extraction executor."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "topics"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "topics"):
         self.agent = chat_client.create_agent(
             name="TopicExtractor",
             instructions="""Extract topics. Return JSON: {"topic_distribution": {}, "emerging_themes": [], "summary": "..."}"""
@@ -119,7 +119,7 @@ class TopicExtractor(Executor):
 class AnomalyDetector(Executor):
     """Anomaly detection executor."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "anomaly"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "anomaly"):
         self.agent = chat_client.create_agent(
             name="AnomalyDetector",
             instructions="""Detect anomalies. Return JSON: {"anomalies_detected": [], "crisis_indicators": [], "summary": "..."}"""
@@ -138,7 +138,7 @@ class AnomalyDetector(Executor):
 class CompetitiveIntelligence(Executor):
     """Competitive intelligence executor."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "competitive"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "competitive"):
         self.agent = chat_client.create_agent(
             name="CompetitiveIntelligence",
             instructions="""Extract competitor info. Return JSON: {"competitor_mentions": [], "win_loss_analysis": {}, "summary": "..."}"""
@@ -161,7 +161,7 @@ class CompetitiveIntelligence(Executor):
 class InsightMiner(Executor):
     """Aggregates parallel results and mines insights (fan-in aggregator)."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "insights"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "insights"):
         self.agent = chat_client.create_agent(
             name="InsightMiner",
             instructions="""Synthesize analyses. Return JSON: {"key_insights": [], "patterns": [], "root_causes": [], "summary": "..."}"""
@@ -199,7 +199,7 @@ class InsightMiner(Executor):
 class PriorityRanker(Executor):
     """Priority ranking executor."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "priority"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "priority"):
         self.agent = chat_client.create_agent(
             name="PriorityRanker",
             instructions="""Rank priorities. Return JSON: {"priority_matrix": [], "quick_wins": [], "churn_risks": [], "summary": "..."}"""
@@ -218,7 +218,7 @@ class PriorityRanker(Executor):
 class ActionGenerator(Executor):
     """Action item generator executor."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "actions"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "actions"):
         self.agent = chat_client.create_agent(
             name="ActionGenerator",
             instructions="""Generate actions. Return JSON: {"action_items": [], "success_metrics": [], "summary": "..."}"""
@@ -241,7 +241,7 @@ class ActionGenerator(Executor):
 class ReportGenerator(Executor):
     """Final report generator (fan-in aggregator)."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "reporter"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "reporter"):
         self.agent = chat_client.create_agent(
             name="ReportGenerator",
             instructions="""Generate report. Return JSON: {"executive_summary": "", "key_metrics": {}, "critical_issues": [], "recommendations": []}"""
@@ -275,7 +275,7 @@ class ReportGenerator(Executor):
 class FinalOrchestrator(Executor):
     """Final orchestrator review."""
 
-    def __init__(self, chat_client: AzureOpenAIChatClient, id: str = "orchestrator_final"):
+    def __init__(self, chat_client: AzureAIClient, id: str = "orchestrator_final"):
         self.agent = chat_client.create_agent(
             name="FinalOrchestrator",
             instructions="""Review results. Return JSON: {"quality_assessment": "", "confidence_score": 0.0-1.0, "final_recommendations": [], "next_steps": []}"""

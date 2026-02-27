@@ -5,11 +5,13 @@ FeedbackForge Workflow
 Survey analysis workflow with parallel execution.
 """
 
+import os
 from typing import Any, Dict, List
 
 from agent_framework import WorkflowBuilder, WorkflowOutputEvent
-from agent_framework.azure import AzureOpenAIChatClient
-from azure.identity import AzureCliCredential
+from agent_framework_azure_ai import AzureAIClient
+from azure.ai.projects.aio import AIProjectClient
+from azure.identity.aio import DefaultAzureCredential
 
 from .executors import (
     InitialOrchestrator,
@@ -31,8 +33,12 @@ class SurveyAnalysisWorkflow:
     """Main workflow with parallel execution."""
 
     def __init__(self):
-        self.credential = AzureCliCredential()
-        self.chat_client = AzureOpenAIChatClient(credential=self.credential)
+        self.credential = DefaultAzureCredential()
+        self.project_client = AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=self.credential,
+        )
+        self.chat_client = AzureAIClient(project_client=self.project_client)
         self.workflow = None
         self._setup_workflow()
 

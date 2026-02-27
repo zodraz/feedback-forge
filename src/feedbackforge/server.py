@@ -14,10 +14,13 @@ The server exposes an AG-UI compatible endpoint that can be consumed by:
 """
 
 import logging
+from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from agent_framework.ag_ui import add_agent_framework_fastapi_endpoint
 
@@ -25,6 +28,10 @@ from .dashboard_agent import create_dashboard_agent
 from .data_store import feedback_store
 
 logger = logging.getLogger(__name__)
+
+# Setup templates directory
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
@@ -52,9 +59,22 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Create the dashboard agent and register AG-UI endpoint
+    # Create the dashboard agent and register AG-UI endpoint at /agent
     agent = create_dashboard_agent()
-    add_agent_framework_fastapi_endpoint(app, agent, "/")
+    add_agent_framework_fastapi_endpoint(app, agent, "/agent")
+
+    @app.get("/", response_class=HTMLResponse)
+    async def root(request: Request):
+        """Welcome page with API information."""
+        return templates.TemplateResponse(
+            "welcome.html",
+            {
+                "request": request,
+                "base_url": str(request.base_url).rstrip('/'),
+                "feedback_count": len(feedback_store.feedback),
+                "alerts_count": len(feedback_store.alerts),
+            }
+        )
 
     @app.get("/health")
     async def health_check():
@@ -107,10 +127,13 @@ def run_server(host: str = "0.0.0.0", port: int = 8080, reload: bool = False):
     print(f"\n📊 Loaded {len(feedback_store.feedback)} feedback items")
     print(f"\n🚀 Starting AG-UI server at http://{host}:{port}")
     print("\nEndpoints:")
-    print(f"  - AG-UI Protocol: http://{host}:{port}/")
+    print(f"  - Welcome Page:   http://{host}:{port}/")
+    print(f"  - AG-UI Protocol: http://{host}:{port}/agent (POST)")
     print(f"  - Health Check:   http://{host}:{port}/health")
     print(f"  - Service Info:   http://{host}:{port}/info")
-    print("\nConnect with CopilotKit or any AG-UI compatible client.")
+    print(f"  - API Docs:       http://{host}:{port}/docs")
+    print("\n💡 Open http://{host}:{port}/ in your browser for API information")
+    print("   Connect CopilotKit to http://{host}:{port}/agent")
     print("=" * 60)
 
     uvicorn.run(

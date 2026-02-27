@@ -8,7 +8,7 @@ interface Message {
   timestamp: Date;
 }
 
-const AG_UI_URL = "http://localhost:8080";
+const AG_UI_URL = "http://localhost:8080/agent";
 
 function App() {
   return (
