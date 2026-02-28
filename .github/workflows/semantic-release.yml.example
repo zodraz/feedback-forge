@@ -1,0 +1,66 @@
+# Example: Semantic Release Workflow
+# Rename to semantic-release.yml to use
+# Requires: Conventional Commits (feat:, fix:, BREAKING CHANGE:)
+
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install -g semantic-release @semantic-release/git @semantic-release/changelog
+
+      - name: Create .releaserc.json
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": ["main"],
+            "plugins": [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              "@semantic-release/changelog",
+              [
+                "@semantic-release/git",
+                {
+                  "assets": ["CHANGELOG.md"],
+                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+                }
+              ],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+# Usage with Conventional Commits:
+# feat: Add new feature        → Minor version bump (1.0.0 → 1.1.0)
+# fix: Bug fix                 → Patch version bump (1.0.0 → 1.0.1)
+# BREAKING CHANGE: ...         → Major version bump (1.0.0 → 2.0.0)

@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: feedbackforge/Dockerfile
+    container_name: feedbackforge-backend
+    ports:
+      - "8081:8081"
+    environment:
+      # Load from .env file
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+      - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - feedbackforge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Dashboard (Executive chat interface)
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: feedbackforge-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://backend:8081/api
+      - VITE_AG_UI_URL=http://backend:8081/agent
+    depends_on:
+      - backend
+    networks:
+      - feedbackforge
+    restart: unless-stopped
+
+  # FAQ Viewer
+  faqs:
+    build:
+      context: ./faqs
+      dockerfile: Dockerfile
+    container_name: feedbackforge-faqs
+    ports:
+      - "3002:3002"
+    environment:
+      - VITE_API_BASE_URL=http://backend:8081/api
+    depends_on:
+      - backend
+    networks:
+      - feedbackforge
+    restart: unless-stopped
+
+  # Redis (for session management)
+  redis:
+    image: redis:7-alpine
+    container_name: feedbackforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - feedbackforge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  feedbackforge:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local

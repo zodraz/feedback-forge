@@ -404,6 +404,48 @@ cd faqs && npm run dev
 - Monitor token usage and costs
 
 ### Deployment
+
+**Docker Deployment (Recommended)**
+
+Complete Docker setup with production and development configurations:
+
+```bash
+# Production deployment
+docker-compose up -d
+
+# Development with hot reload
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+Services:
+- Backend API: http://localhost:8081
+- Dashboard: http://localhost:3000
+- FAQ Viewer: http://localhost:3002
+- Redis: localhost:6379
+
+See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for complete documentation.
+
+**CI/CD with GitHub Actions**
+
+Automated builds push to Azure Container Registry on every commit:
+
+```bash
+# Automatically builds and pushes on push to main
+git push origin main
+
+# Create versioned release
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Setup:
+1. Create Azure Container Registry
+2. Add GitHub secrets: `ACR_REGISTRY`, `ACR_USERNAME`, `ACR_PASSWORD`
+3. Push to main - images build automatically
+
+See [GITHUB_ACTIONS_ACR_SETUP.md](GITHUB_ACTIONS_ACR_SETUP.md) for setup instructions.
+
+**Best Practices**
 - Use container orchestration (Docker/Kubernetes)
 - Implement health checks and readiness probes
 - Set up proper logging and monitoring
@@ -443,4 +485,4 @@ MIT License - see LICENSE file for details
 
 **Status**: Beta - Active Development
 
-**Last Updated**: 2026-02-27
+**Last Updated**: 2026-02-28
