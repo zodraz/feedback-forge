@@ -1,0 +1,66 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: FeedbackForge Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "feedbackforge.server",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Python: FAQ Generator",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "feedbackforge",
+            "args": [
+                "faq",
+                "--days", "30",
+                "--max-faqs", "10"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Python: RAG Setup",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "feedbackforge.rag_setup",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Python: Current File as Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "${fileBasenameNoExtension}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

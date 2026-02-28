@@ -16,7 +16,10 @@ The server exposes an AG-UI compatible endpoint that can be consumed by:
 import logging
 import os
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .data_store import CosmosDBFeedbackStore, InMemoryFeedbackStore
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,13 +43,11 @@ custom_metrics = {}
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Session manager (global)
-session_manager: Optional[SessionManager] = None
-
-
 # Type annotation for union of store types
-from typing import Union
 FeedbackStoreType = Union["CosmosDBFeedbackStore", "InMemoryFeedbackStore"]
+
+# Session manager (global)
+session_manager: Optional[Union[SessionManager, InMemorySessionManager]] = None
 
 
 # Pydantic models for API
@@ -266,20 +267,20 @@ def run_server(host: str = "0.0.0.0", port: int = 8080, reload: bool = False):
     """
     import uvicorn
 
-    print("=" * 60)
-    print("  FeedbackForge - AG-UI Production Server")
-    print("=" * 60)
-    print(f"\n📊 Loaded {len(feedback_store.feedback)} feedback items")
-    print(f"\n🚀 Starting AG-UI server at http://{host}:{port}")
-    print("\nEndpoints:")
-    print(f"  - Welcome Page:   http://{host}:{port}/")
-    print(f"  - AG-UI Protocol: http://{host}:{port}/agent (POST)")
-    print(f"  - Health Check:   http://{host}:{port}/health")
-    print(f"  - Service Info:   http://{host}:{port}/info")
-    print(f"  - API Docs:       http://{host}:{port}/docs")
-    print("\n💡 Open http://{host}:{port}/ in your browser for API information")
-    print("   Connect CopilotKit to http://{host}:{port}/agent")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("  FeedbackForge - AG-UI Production Server")
+    logger.info("=" * 60)
+    logger.info(f"\n📊 Loaded {len(feedback_store.feedback)} feedback items")
+    logger.info(f"\n🚀 Starting AG-UI server at http://{host}:{port}")
+    logger.info("\nEndpoints:")
+    logger.info(f"  - Welcome Page:   http://{host}:{port}/")
+    logger.info(f"  - AG-UI Protocol: http://{host}:{port}/agent (POST)")
+    logger.info(f"  - Health Check:   http://{host}:{port}/health")
+    logger.info(f"  - Service Info:   http://{host}:{port}/info")
+    logger.info(f"  - API Docs:       http://{host}:{port}/docs")
+    logger.info("\n💡 Open http://{host}:{port}/ in your browser for API information")
+    logger.info("   Connect CopilotKit to http://{host}:{port}/agent")
+    logger.info("=" * 60)
 
     uvicorn.run(
         "feedbackforge.server:create_app",

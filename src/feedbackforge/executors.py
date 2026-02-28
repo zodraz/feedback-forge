@@ -6,6 +6,7 @@ Executor classes for the multi-agent workflow pipeline.
 """
 
 import json
+import logging
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, List
@@ -14,6 +15,8 @@ from agent_framework import Executor, WorkflowContext, handler
 from agent_framework_azure_ai import AzureAIClient
 
 from .models import AnalysisState
+
+logger = logging.getLogger(__name__)
 
 
 def parse_json_response(text: str) -> Dict[str, Any]:
@@ -43,11 +46,13 @@ Return JSON: {"proceed": true/false, "survey_count": N, "quality_assessment": "g
 
     @handler
     async def orchestrate_initial(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"\n{'='*60}\n🎼 Initial Orchestrator: Planning Analysis\n{'='*60}")
+        logger.info("="*60)
+        logger.info("🎼 Initial Orchestrator: Planning Analysis")
+        logger.info("="*60)
         survey_data = json.dumps([asdict(s) for s in state.surveys], indent=2)
         result = await self.agent.run(f"Analyze this survey batch:\n\n{survey_data}")
         state.orchestrator_initial = parse_json_response(result.text)
-        print(f"✅ Plan: {state.orchestrator_initial.get('summary', 'Ready')}")
+        logger.info(f"✅ Plan: {state.orchestrator_initial.get('summary', 'Ready')}")
         await ctx.send_message(state)
 
 
@@ -67,10 +72,10 @@ class DataPreprocessor(Executor):
 
     @handler
     async def preprocess(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"\n📊 Data Preprocessing")
+        logger.info(f"\n📊 Data Preprocessing")
         result = await self.agent.run(f"Preprocess:\n{json.dumps([asdict(s) for s in state.surveys], indent=2)}")
         state.preprocessing = parse_json_response(result.text)
-        print(f"✅ {state.preprocessing.get('summary', 'Done')}")
+        logger.info(f"✅ {state.preprocessing.get('summary', 'Done')}")
         await ctx.send_message(state)
 
 
@@ -90,10 +95,10 @@ class SentimentAnalyzer(Executor):
 
     @handler
     async def analyze(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"🎭 Sentiment Analysis (Parallel)")
+        logger.info(f"🎭 Sentiment Analysis (Parallel)")
         result = await self.agent.run(f"Analyze sentiment:\n{json.dumps([asdict(s) for s in state.surveys], indent=2)}")
         state.sentiment = parse_json_response(result.text)
-        print(f"✅ Sentiment complete")
+        logger.info(f"✅ Sentiment complete")
         await ctx.send_message(state)
 
 
@@ -109,10 +114,10 @@ class TopicExtractor(Executor):
 
     @handler
     async def extract(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"🏷️  Topic Extraction (Parallel)")
+        logger.info(f"🏷️  Topic Extraction (Parallel)")
         result = await self.agent.run(f"Extract topics:\n{json.dumps([asdict(s) for s in state.surveys], indent=2)}")
         state.topics = parse_json_response(result.text)
-        print(f"✅ Topics complete")
+        logger.info(f"✅ Topics complete")
         await ctx.send_message(state)
 
 
@@ -128,10 +133,10 @@ class AnomalyDetector(Executor):
 
     @handler
     async def detect(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"🔍 Anomaly Detection (Parallel)")
+        logger.info(f"🔍 Anomaly Detection (Parallel)")
         result = await self.agent.run(f"Detect anomalies:\n{json.dumps([asdict(s) for s in state.surveys], indent=2)}")
         state.anomalies = parse_json_response(result.text)
-        print(f"✅ Anomalies complete")
+        logger.info(f"✅ Anomalies complete")
         await ctx.send_message(state)
 
 
@@ -147,10 +152,10 @@ class CompetitiveIntelligence(Executor):
 
     @handler
     async def analyze_competitive(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"🏆 Competitive Intelligence (Parallel)")
+        logger.info(f"🏆 Competitive Intelligence (Parallel)")
         result = await self.agent.run(f"Analyze competitors:\n{json.dumps([asdict(s) for s in state.surveys], indent=2)}")
         state.competitive = parse_json_response(result.text)
-        print(f"✅ Competitive complete")
+        logger.info(f"✅ Competitive complete")
         await ctx.send_message(state)
 
 
@@ -171,7 +176,7 @@ class InsightMiner(Executor):
     @handler
     async def mine(self, states: List[AnalysisState], ctx: WorkflowContext[AnalysisState]) -> None:
         """Fan-in handler: receives list of states from all parallel analyzers."""
-        print(f"\n💡 Insight Mining (aggregating {len(states)} parallel results)")
+        logger.info(f"\n💡 Insight Mining (aggregating {len(states)} parallel results)")
 
         # Merge all parallel analysis results into one state
         merged = states[0]
@@ -188,7 +193,7 @@ class InsightMiner(Executor):
         context = f"Sentiment: {json.dumps(merged.sentiment)}\nTopics: {json.dumps(merged.topics)}\nAnomalies: {json.dumps(merged.anomalies)}\nCompetitive: {json.dumps(merged.competitive)}"
         result = await self.agent.run(context)
         merged.insights = parse_json_response(result.text)
-        print(f"✅ Insights mined")
+        logger.info(f"✅ Insights mined")
         await ctx.send_message(merged)
 
 
@@ -208,10 +213,10 @@ class PriorityRanker(Executor):
 
     @handler
     async def rank(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"🎯 Priority Ranking (Parallel)")
+        logger.info(f"🎯 Priority Ranking (Parallel)")
         result = await self.agent.run(f"Insights: {json.dumps(state.insights)}\n\nRank priorities.")
         state.priorities = parse_json_response(result.text)
-        print(f"✅ Priorities ranked")
+        logger.info(f"✅ Priorities ranked")
         await ctx.send_message(state)
 
 
@@ -227,10 +232,10 @@ class ActionGenerator(Executor):
 
     @handler
     async def generate(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState]) -> None:
-        print(f"📋 Action Generation (Parallel)")
+        logger.info(f"📋 Action Generation (Parallel)")
         result = await self.agent.run(f"Insights: {json.dumps(state.insights)}\n\nGenerate actions.")
         state.actions = parse_json_response(result.text)
-        print(f"✅ Actions generated")
+        logger.info(f"✅ Actions generated")
         await ctx.send_message(state)
 
 
@@ -251,7 +256,7 @@ class ReportGenerator(Executor):
     @handler
     async def generate_report(self, states: List[AnalysisState], ctx: WorkflowContext[AnalysisState]) -> None:
         """Fan-in handler: receives list of states from priorities and actions."""
-        print(f"\n📄 Report Generation (aggregating {len(states)} parallel results)")
+        logger.info(f"\n📄 Report Generation (aggregating {len(states)} parallel results)")
 
         # Merge priorities and actions from parallel executors
         merged = states[0]
@@ -264,7 +269,7 @@ class ReportGenerator(Executor):
         context = f"All Results:\n{json.dumps({'sentiment': merged.sentiment, 'topics': merged.topics, 'insights': merged.insights, 'priorities': merged.priorities, 'actions': merged.actions})}"
         result = await self.agent.run(context)
         merged.report = parse_json_response(result.text)
-        print(f"✅ Report generated")
+        logger.info(f"✅ Report generated")
         await ctx.send_message(merged)
 
 
@@ -284,13 +289,13 @@ class FinalOrchestrator(Executor):
 
     @handler
     async def orchestrate_final(self, state: AnalysisState, ctx: WorkflowContext[AnalysisState, Dict[str, Any]]) -> None:
-        print(f"\n{'='*60}\n🎼 Final Orchestrator Review\n{'='*60}")
+        logger.info(f"\n{'='*60}\n🎼 Final Orchestrator Review\n{'='*60}")
         all_results = {"preprocessing": state.preprocessing, "sentiment": state.sentiment, "topics": state.topics,
                        "anomalies": state.anomalies, "competitive": state.competitive, "insights": state.insights,
                        "priorities": state.priorities, "actions": state.actions, "report": state.report}
         result = await self.agent.run(f"Review:\n{json.dumps(all_results, indent=2)}")
         state.orchestrator_final = parse_json_response(result.text)
-        print(f"✅ Review Complete")
+        logger.info(f"✅ Review Complete")
         await ctx.yield_output({
             "analysis_complete": True, "timestamp": datetime.now().isoformat(),
             "surveys_analyzed": len(state.surveys), "parallel_analysis": {"sentiment": state.sentiment, "topics": state.topics, "anomalies": state.anomalies, "competitive": state.competitive},

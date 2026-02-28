@@ -12,11 +12,12 @@ FeedbackForge is an AI-powered feedback analysis system that uses multiple speci
 - **Executive Dashboard**: Interactive chat interface for exploring feedback insights
 - **Real-time Anomaly Detection**: Automatically detect unusual patterns and spikes
 - **Competitive Intelligence**: Extract competitor mentions and churn risk analysis
-- **Three Operating Modes**: Development, Production, and Batch processing
+- **RAG-Powered FAQ Generator**: Automatically generate FAQs from customer feedback using semantic search
+- **Four Operating Modes**: Development, Production, Batch processing, and FAQ Generation
 
 ## Architecture
 
-### Three Operating Modes
+### Four Operating Modes
 
 #### 1. Chat Mode (DevUI) - Development Interface
 - Interactive chat with the executive dashboard assistant
@@ -34,6 +35,12 @@ FeedbackForge is an AI-powered feedback analysis system that uses multiple speci
 - Full multi-agent analysis pipeline
 - Best for: Batch processing of survey data
 - Command: `python -m feedbackforge workflow`
+
+#### 4. FAQ Mode - RAG-Powered FAQ Generation
+- Automatically generate FAQs from customer feedback using Azure AI Search
+- Uses hybrid search (keyword + vector + semantic) for intelligent theme clustering
+- Best for: Creating customer-facing documentation, support knowledge bases
+- Command: `python -m feedbackforge faq`
 
 ### Multi-Agent Workflow Pipeline
 
@@ -158,6 +165,34 @@ python -m feedbackforge workflow --max-surveys 50
 ```
 
 Output: JSON file `survey_analysis_<timestamp>.json` with complete analysis results.
+
+### FAQ Mode (RAG-Powered FAQ Generation)
+
+```bash
+# Generate FAQs from last 30 days (default)
+python -m feedbackforge faq
+
+# Generate from last 7 days, minimum 5 mentions
+python -m feedbackforge faq --days 7 --min-mentions 5
+
+# Generate top 20 FAQs in friendly style
+python -m feedbackforge faq --max-faqs 20 --style friendly
+
+# Export only to HTML
+python -m feedbackforge faq --formats html
+
+# Advanced: Custom settings
+python -m feedbackforge faq --days 14 --min-mentions 2 --style technical --max-faqs 25
+```
+
+Output: FAQ files in markdown, JSON, and/or HTML formats (e.g., `faq_generated_<timestamp>.md`)
+
+**Prerequisites for FAQ Mode:**
+- Azure AI Search resource (for semantic/vector search)
+- Azure OpenAI embedding deployment (for vector embeddings)
+- Feedback data indexed in Azure AI Search
+
+See `FAQ_QUICKSTART.md` for setup instructions.
 
 ## Dashboard Agent Tools
 

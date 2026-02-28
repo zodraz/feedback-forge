@@ -5,6 +5,7 @@ FeedbackForge Workflow
 Survey analysis workflow with parallel execution.
 """
 
+import logging
 import os
 from typing import Any, Dict, List
 
@@ -27,6 +28,8 @@ from .executors import (
     FinalOrchestrator,
 )
 from .models import AnalysisState, SurveyResponse
+
+logger = logging.getLogger(__name__)
 
 
 class SurveyAnalysisWorkflow:
@@ -83,7 +86,7 @@ class SurveyAnalysisWorkflow:
 
     async def analyze(self, surveys: List[SurveyResponse]) -> Dict[str, Any]:
         """Run the complete analysis workflow."""
-        print(f"\n{'='*60}\n🚀 Starting Multi-Agent Analysis\n📊 Analyzing {len(surveys)} responses\n{'='*60}")
+        logger.info(f"\n{'='*60}\n🚀 Starting Multi-Agent Analysis\n📊 Analyzing {len(surveys)} responses\n{'='*60}")
 
         if self.workflow is None:
             return {"error": "Workflow not initialized"}
@@ -92,6 +95,6 @@ class SurveyAnalysisWorkflow:
         async for event in self.workflow.run_stream(AnalysisState(surveys=surveys)):
             if isinstance(event, WorkflowOutputEvent):
                 final_result = event.data
-                print(f"\n{'='*60}\n✨ Analysis Complete!\n{'='*60}\n")
+                logger.info(f"\n{'='*60}\n✨ Analysis Complete!\n{'='*60}\n")
 
         return final_result if final_result else {"error": "Workflow failed"}

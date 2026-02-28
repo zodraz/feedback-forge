@@ -21,30 +21,34 @@ if __name__ == "__main__" and __package__ is None:
 import asyncio
 import argparse
 import json
+import logging
 from datetime import datetime
 
 from feedbackforge.data_store import feedback_store
 from feedbackforge.workflow import SurveyAnalysisWorkflow
 from feedbackforge.dashboard_agent import create_dashboard_agent
+from feedbackforge.faq_command import FAQCommand
+
+logger = logging.getLogger(__name__)
 
 
 async def run_workflow_mode(max_surveys: int = 20):
     """Run the full multi-agent workflow analysis using shared data store."""
     surveys = feedback_store.get_surveys()[:max_surveys]
 
-    print(f"\n📊 Using {len(surveys)} surveys from shared data store")
+    logger.info(f"\n📊 Using {len(surveys)} surveys from shared data store")
 
     workflow = SurveyAnalysisWorkflow()
     results = await workflow.analyze(surveys)
 
-    print("\n" + "=" * 60 + "\n📊 RESULTS\n" + "=" * 60)
+    logger.info("\n" + "=" * 60 + "\n📊 RESULTS\n" + "=" * 60)
     if results.get("final_report"):
-        print(json.dumps(results["final_report"], indent=2))
+        logger.info(json.dumps(results["final_report"], indent=2))
 
     output_file = f"survey_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(output_file, 'w') as f:
         json.dump(results, f, indent=2)
-    print(f"\n✅ Saved to: {output_file}")
+    logger.info(f"\n✅ Saved to: {output_file}")
 
     return results
 
@@ -53,17 +57,17 @@ def run_chat_mode(port: int = 8090):
     """Launch the DevUI chat interface (development mode)."""
     from agent_framework.devui import serve
 
-    print("=" * 60)
-    print("  FeedbackForge - Development Mode (DevUI)")
-    print("=" * 60)
-    print(f"\n📊 Loaded {len(feedback_store.feedback)} feedback items")
-    print(f"\nStarting DevUI at http://localhost:{port}")
-    print("\nTry these queries:")
-    print("  - 'Show me this week's feedback summary'")
-    print("  - 'Tell me more about the iOS crashes'")
-    print("  - 'What are customers saying about competitors?'")
-    print("  - 'Check for any anomalies'")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("  FeedbackForge - Development Mode (DevUI)")
+    logger.info("=" * 60)
+    logger.info(f"\n📊 Loaded {len(feedback_store.feedback)} feedback items")
+    logger.info(f"\nStarting DevUI at http://localhost:{port}")
+    logger.info("\nTry these queries:")
+    logger.info("  - 'Show me this week's feedback summary'")
+    logger.info("  - 'Tell me more about the iOS crashes'")
+    logger.info("  - 'What are customers saying about competitors?'")
+    logger.info("  - 'Check for any anomalies'")
+    logger.info("=" * 60)
 
     agent = create_dashboard_agent()
     serve(entities=[agent], port=port, auto_open=True)
@@ -87,6 +91,8 @@ Examples:
   python -m feedbackforge serve        # AG-UI production server
   python -m feedbackforge serve --port 5000 --reload
   python -m feedbackforge workflow     # Run full analysis pipeline
+  python -m feedbackforge faq          # Generate FAQs using RAG
+  python -m feedbackforge faq --days 7 --max-faqs 20
         """
     )
     subparsers = parser.add_subparsers(dest="mode", help="Operating mode")
@@ -105,12 +111,18 @@ Examples:
     workflow_parser = subparsers.add_parser("workflow", help="Run full analysis pipeline")
     workflow_parser.add_argument("--max-surveys", type=int, default=20, help="Max surveys to analyze (default: 20)")
 
+    # FAQ mode (RAG-based FAQ generation)
+    faq_parser = subparsers.add_parser("faq", help="Generate FAQs from customer feedback using RAG")
+    FAQCommand.setup_parser(faq_parser)
+
     args = parser.parse_args()
 
     if args.mode == "workflow":
         asyncio.run(run_workflow_mode(max_surveys=args.max_surveys))
     elif args.mode == "serve":
         run_serve_mode(host=args.host, port=args.port, reload=args.reload)
+    elif args.mode == "faq":
+        sys.exit(FAQCommand().execute(args))
     else:
         # Default to chat mode
         port = getattr(args, "port", 8090)

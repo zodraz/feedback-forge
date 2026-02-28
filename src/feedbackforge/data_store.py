@@ -441,7 +441,7 @@ class CosmosDBFeedbackStore:
                     {
                         "text": i.get('text'),
                         "sentiment": i.get('sentiment'),
-                        "days_ago": (datetime.now() - datetime.fromisoformat(i.get('timestamp'))).days
+                        "days_ago": (datetime.now() - datetime.fromisoformat(str(i.get('timestamp')))).days if i.get('timestamp') else 0
                     }
                     for i in items
                 ],
