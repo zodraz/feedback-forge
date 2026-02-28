@@ -8,8 +8,9 @@ interface Message {
   timestamp: Date;
 }
 
-const AG_UI_URL = "http://localhost:8080/agent";
-const API_BASE_URL = "http://localhost:8080/api";
+// Load API URLs from environment variables
+const AG_UI_URL = import.meta.env.VITE_AG_UI_URL || "http://localhost:8081/agent";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/api";
 
 function App() {
   return (
@@ -68,9 +69,10 @@ function Sidebar() {
             key={index}
             className="quick-action-btn"
             onClick={() => {
-              navigator.clipboard.writeText(action.query);
+              console.log('Quick action clicked:', action.query);
               const event = new CustomEvent('quickAction', { detail: action.query });
               window.dispatchEvent(event);
+              console.log('Event dispatched');
             }}
           >
             <span className="action-icon">{action.icon}</span>
@@ -132,6 +134,7 @@ function ChatContainer() {
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -143,11 +146,19 @@ function ChatContainer() {
 
   // Listen for quick action events
   useEffect(() => {
-    const handleQuickAction = (e: CustomEvent) => {
-      setInput(e.detail);
+    const handleQuickAction = (e: Event) => {
+      console.log('Quick action event received:', e);
+      const customEvent = e as CustomEvent<string>;
+      console.log('Quick action query:', customEvent.detail);
+      setInput(customEvent.detail);
+      // Focus the input field
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     };
-    window.addEventListener('quickAction', handleQuickAction as EventListener);
-    return () => window.removeEventListener('quickAction', handleQuickAction as EventListener);
+    window.addEventListener('quickAction', handleQuickAction);
+    console.log('Quick action listener registered');
+    return () => window.removeEventListener('quickAction', handleQuickAction);
   }, []);
 
   // Load existing session on mount
@@ -368,6 +379,7 @@ function ChatContainer() {
 
       <form onSubmit={sendMessage} className="chat-input-form">
         <input
+          ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}

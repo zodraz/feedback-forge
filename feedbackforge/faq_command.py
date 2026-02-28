@@ -60,7 +60,8 @@ class FAQCommand:
             '--formats',
             nargs='+',
             choices=['markdown', 'json', 'html'],
-            default=['markdown', 'json', 'html'],
+            # default=['markdown', 'json', 'html'],
+            default=[],
             help='Export formats (default: all)'
         )
 

@@ -8,7 +8,20 @@ feedback-forge/
 ├── .git/                     # Git repository
 ├── .venv/                    # Python virtual environment
 ├── .vscode/                  # VS Code settings
-├── dashboard/                # React + TypeScript executive dashboard
+├── feedbackforge/            # Python backend package
+│   ├── templates/           # Jinja2 HTML templates
+│   │   └── welcome.html     # Welcome page template
+│   ├── __init__.py          # Package initialization
+│   ├── __main__.py          # CLI entry point
+│   ├── chat_tools.py        # Agent tools for chat mode
+│   ├── dashboard_agent.py   # Agent creation and configuration
+│   ├── data_store.py        # Cosmos DB data store with mock data
+│   ├── executors.py         # Workflow executor classes (11 agents)
+│   ├── models.py            # Data models (Pydantic/dataclasses)
+│   ├── server.py            # FastAPI AG-UI server
+│   ├── workflow.py          # Multi-agent workflow orchestration
+│   └── faq_generator.py     # RAG-powered FAQ generation
+├── dashboard/               # React + TypeScript executive dashboard
 │   ├── src/
 │   │   ├── App.tsx          # Main dashboard component
 │   │   ├── App.css          # Dashboard styles
@@ -18,18 +31,16 @@ feedback-forge/
 │   ├── package.json         # Node dependencies
 │   ├── tsconfig.json        # TypeScript config
 │   └── vite.config.ts       # Vite build config
-├── src/feedbackforge/        # Python backend package
-│   ├── templates/           # Jinja2 HTML templates
-│   │   └── welcome.html     # Welcome page template
-│   ├── __init__.py          # Package initialization
-│   ├── __main__.py          # CLI entry point
-│   ├── chat_tools.py        # Agent tools for chat mode
-│   ├── dashboard_agent.py   # Agent creation and configuration
-│   ├── data_store.py        # In-memory data store with mock data
-│   ├── executors.py         # Workflow executor classes (11 agents)
-│   ├── models.py            # Data models (Pydantic/dataclasses)
-│   ├── server.py            # FastAPI AG-UI server
-│   └── workflow.py          # Multi-agent workflow orchestration
+├── faqs/                    # React + TypeScript FAQ viewer
+│   ├── src/
+│   │   ├── App.tsx          # Main FAQ viewer component
+│   │   ├── App.css          # FAQ viewer styles
+│   │   ├── main.tsx         # React entry point
+│   │   └── index.css        # Global styles
+│   ├── index.html           # HTML template
+│   ├── package.json         # Node dependencies
+│   ├── tsconfig.json        # TypeScript config
+│   └── vite.config.ts       # Vite build config
 ├── .env                      # Environment variables (not in git)
 ├── .gitignore               # Git ignore rules
 ├── IMPROVEMENTS.md          # Detailed improvement suggestions
@@ -53,7 +64,7 @@ feedback-forge/
 - **Framework**: React 18 + Vite
 - **Features**: Chat interface, quick actions, real-time streaming
 - **Port**: 3000 (default)
-- **Connects To**: Backend AG-UI endpoint at `http://localhost:8080/agent`
+- **Connects To**: Backend AG-UI endpoint at `http://localhost:8081/agent`
 
 ### Templates
 - **Location**: `src/feedbackforge/templates/`
@@ -69,7 +80,7 @@ feedback-forge/
 python -m feedbackforge
 
 # Production server (AG-UI)
-python -m feedbackforge serve --port 8080
+python -m feedbackforge serve --port 8081
 
 # Batch workflow
 python -m feedbackforge workflow --max-surveys 20
@@ -85,7 +96,7 @@ npm run dev
 ### Full Stack (Backend + Dashboard)
 ```bash
 # Terminal 1 - Backend
-python -m feedbackforge serve --port 8080
+python -m feedbackforge serve --port 8081
 
 # Terminal 2 - Dashboard
 cd dashboard && npm run dev
@@ -124,7 +135,7 @@ Then open http://localhost:3000/ in your browser.
 ```bash
 cd dashboard
 npm run build
-# Output: dashboard/dist/
+# Output: src/dashboard/dist/
 ```
 
 ## Development Tips
@@ -141,7 +152,7 @@ npm run build
    (Vite provides hot module replacement by default)
 
 3. **View API docs**:
-   Open http://localhost:8080/docs in your browser
+   Open http://localhost:8081/docs in your browser
 
 4. **Check logs**:
    - Backend: stdout/stderr

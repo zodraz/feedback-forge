@@ -29,6 +29,13 @@ from feedbackforge.workflow import SurveyAnalysisWorkflow
 from feedbackforge.dashboard_agent import create_dashboard_agent
 from feedbackforge.faq_command import FAQCommand
 
+# Configure logging to output to console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',  # Clean format without level prefix for better readability
+    handlers=[logging.StreamHandler()]
+)
+
 logger = logging.getLogger(__name__)
 
 

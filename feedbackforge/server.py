@@ -254,10 +254,66 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
         else:
             raise HTTPException(status_code=404, detail="Session not found or unauthorized")
 
+    # FAQ endpoints
+    @app.get("/api/faqs")
+    async def get_faqs(limit: int = 10):
+        """
+        Get FAQ documents from storage.
+
+        Args:
+            limit: Maximum number of FAQ documents to return (default: 10)
+
+        Returns:
+            List of FAQ documents sorted by generated_at (most recent first)
+        """
+        if not hasattr(feedback_store, 'get_faqs'):
+            raise HTTPException(
+                status_code=501,
+                detail="FAQ retrieval not supported. Using in-memory store without FAQ support."
+            )
+
+        try:
+            faqs = feedback_store.get_faqs(limit=limit)
+            return faqs
+        except Exception as e:
+            logger.error(f"Failed to retrieve FAQs: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve FAQs: {str(e)}")
+
+    @app.get("/api/faqs/{faq_id}")
+    async def get_faq_by_id(faq_id: str):
+        """
+        Get a specific FAQ document by ID.
+
+        Args:
+            faq_id: The FAQ document ID
+
+        Returns:
+            FAQ document
+        """
+        if not hasattr(feedback_store, 'get_faqs'):
+            raise HTTPException(
+                status_code=501,
+                detail="FAQ retrieval not supported. Using in-memory store without FAQ support."
+            )
+
+        try:
+            faqs = feedback_store.get_faqs(limit=100)
+            faq = next((f for f in faqs if f.get('id') == faq_id), None)
+
+            if not faq:
+                raise HTTPException(status_code=404, detail=f"FAQ document '{faq_id}' not found")
+
+            return faq
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to retrieve FAQ {faq_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve FAQ: {str(e)}")
+
     return app
 
 
-def run_server(host: str = "0.0.0.0", port: int = 8080, reload: bool = False):
+def run_server(host: str = "0.0.0.0", port: int = 8081, reload: bool = False):
     """Run the AG-UI server.
 
     Args:
@@ -277,9 +333,11 @@ def run_server(host: str = "0.0.0.0", port: int = 8080, reload: bool = False):
     logger.info(f"  - AG-UI Protocol: http://{host}:{port}/agent (POST)")
     logger.info(f"  - Health Check:   http://{host}:{port}/health")
     logger.info(f"  - Service Info:   http://{host}:{port}/info")
+    logger.info(f"  - FAQ API:        http://{host}:{port}/api/faqs")
     logger.info(f"  - API Docs:       http://{host}:{port}/docs")
     logger.info("\n💡 Open http://{host}:{port}/ in your browser for API information")
     logger.info("   Connect CopilotKit to http://{host}:{port}/agent")
+    logger.info("   View FAQs at http://localhost:3002/ (run: cd faqs && npm run dev)")
     logger.info("=" * 60)
 
     uvicorn.run(

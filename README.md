@@ -29,7 +29,7 @@ FeedbackForge is an AI-powered feedback analysis system that uses multiple speci
 - FastAPI server with AG-UI protocol (CopilotKit compatible)
 - Best for: Production deployment with frontend integration
 - Default port: 8080
-- Command: `python -m feedbackforge serve`
+- Command: `python -m feedbackforge serve --port 8081`
 
 #### 3. Workflow Mode - Batch Analysis
 - Full multi-agent analysis pipeline
@@ -143,16 +143,16 @@ Try these queries in the chat:
 
 ```bash
 # Start AG-UI server on default port (8080)
-python -m feedbackforge serve
+python -m feedbackforge serve --port 8081
 
 # Custom configuration
-python -m feedbackforge serve --host 0.0.0.0 --port 5000 --reload
+python -m feedbackforge serve --port 8081 --host 0.0.0.0 --port 5000 --reload
 ```
 
 Endpoints:
-- AG-UI Protocol: `http://localhost:8080/`
-- Health Check: `http://localhost:8080/health`
-- Service Info: `http://localhost:8080/info`
+- AG-UI Protocol: `http://localhost:8081/`
+- Health Check: `http://localhost:8081/health`
+- Service Info: `http://localhost:8081/info`
 
 ### Workflow Mode (Batch Analysis)
 
@@ -229,16 +229,18 @@ State object passed through workflow pipeline:
 
 ```
 feedback-forge/
-├── src/feedbackforge/
+├── feedbackforge/
 │   ├── __main__.py           # CLI entry point
 │   ├── workflow.py           # Multi-agent workflow orchestration
 │   ├── executors.py          # 11 executor classes for workflow stages
 │   ├── models.py             # Data models
-│   ├── data_store.py         # In-memory data store with mock data
+│   ├── data_store.py         # Cosmos DB data store with mock data
 │   ├── dashboard_agent.py    # Chat agent creation
 │   ├── chat_tools.py         # AI function tools
-│   └── server.py             # FastAPI AG-UI server
+│   ├── server.py             # FastAPI AG-UI server
+│   └── faq_generator.py      # RAG-powered FAQ generation
 ├── dashboard/                # React + TypeScript executive dashboard
+├── faqs/                     # React + TypeScript FAQ viewer
 ├── pyproject.toml           # Project configuration
 └── README.md
 ```
@@ -267,11 +269,40 @@ The production server (serve mode) exposes an AG-UI compatible endpoint that can
 - CopilotKit React/Angular frontends
 - Any AG-UI protocol compatible client
 
-Dashboard setup (in `dashboard/` directory):
+### Executive Dashboard
+
+Interactive chat interface for exploring feedback insights:
+
 ```bash
 cd dashboard
 npm install
 npm run dev
+```
+
+Opens at http://localhost:3000/
+
+### FAQ Viewer
+
+Beautiful web interface for viewing auto-generated FAQs:
+
+```bash
+cd faqs
+npm install
+npm run dev
+```
+
+Opens at http://localhost:3002/
+
+**Prerequisites**: Backend server must be running with FAQ data:
+```bash
+# Terminal 1: Start backend
+python -m feedbackforge serve --port 8081 --port 8080
+
+# Terminal 2: Generate FAQs
+python -m feedbackforge faq
+
+# Terminal 3: Start FAQ viewer
+cd faqs && npm run dev
 ```
 
 ## Current Limitations & Known Issues

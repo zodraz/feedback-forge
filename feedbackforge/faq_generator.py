@@ -15,6 +15,7 @@ from collections import defaultdict
 from .rag_search import rag_search_client, init_rag_search
 from .rag_tools import get_embeddings
 from .rag_setup import RAGSetup
+from .data_store import feedback_store
 
 logger = logging.getLogger(__name__)
 
@@ -477,7 +478,8 @@ class FAQGenerator:
 
                     # Metadata
                     f.write(f"**Frequency**: Mentioned {faq['frequency']} times | ")
-                    f.write(f"**Platforms**: {', '.join(faq['platforms'])} | ")
+                    if not faq['platforms'] is None and not faq['platforms']==[None]: 
+                        f.write(f"**Platforms**: {', '.join(faq['platforms'])} | ")
                     f.write(f"**Avg Rating**: {faq['avg_rating']}/5\n\n")
 
                     # Related feedback (collapsed)
@@ -548,7 +550,6 @@ class FAQGenerator:
     <h1>📚 Frequently Asked Questions</h1>
     <p><em>Auto-generated from customer feedback on """ + datetime.now().strftime('%B %d, %Y') + """</em></p>
 """
-
             for i, faq in enumerate(faqs, 1):
                 html += f"""
     <div class="faq-item">
@@ -557,12 +558,21 @@ class FAQGenerator:
         <div class="metadata">
             <span class="badge frequency">📊 {faq['frequency']} mentions</span>
             <span class="badge rating">⭐ {faq['avg_rating']}/5</span>
+"""
+                if not faq['platforms'] is None and not faq['platforms']==[None]: 
+                    html += f"""
             <span class="badge platform">💻 {', '.join(faq['platforms'])}</span>
         </div>
         <details class="feedback-samples">
             <summary>📝 View Related Customer Feedback</summary>
 """
-
+                else:
+                    html += f"""
+            <span class="badge platform">💻 No platforms specified</span>
+        </div>
+        <details class="feedback-samples">
+            <summary>📝 View Related Customer Feedback</summary>
+"""
                 for feedback in faq['related_feedback']:
                     html += f"""
             <div class="sample"><strong>{feedback['customer']}:</strong> {feedback['text']}</div>
@@ -658,9 +668,25 @@ def generate_faq(
 
     logger.info(f"✅ Generated {len(faqs)} FAQs and exported to {len(exports)} formats")
 
-    return {
+    # Prepare result
+    result = {
         "faqs": faqs,
         "exports": exports,
         "theme_count": len(themes),
-        "generated_at": datetime.now().isoformat()
+        "generated_at": datetime.now().isoformat(),
+        "faq_count": len(faqs)
     }
+
+    # Save to Cosmos DB if available
+    try:
+        if hasattr(feedback_store, 'save_faq'):
+            logger.info("💾 Saving FAQs to Cosmos DB...")
+            feedback_store.save_faq(result)
+            logger.info("✅ FAQs saved to Cosmos DB collection 'faqs'")
+        else:
+            logger.info("ℹ️ Cosmos DB not available, FAQs not saved to database")
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to save FAQs to Cosmos DB: {e}")
+        logger.info("   FAQs were still exported to files successfully")
+
+    return result

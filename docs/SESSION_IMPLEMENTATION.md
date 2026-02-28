@@ -119,7 +119,7 @@ REDIS_URL=redis://localhost:6379
 #### Start servers:
 ```bash
 # Backend
-python -m feedbackforge serve --port 8080
+python -m feedbackforge serve --port 8081
 
 # Dashboard
 cd dashboard && npm run dev
@@ -136,7 +136,7 @@ cd dashboard && npm run dev
 #### Simply start without Redis:
 ```bash
 # No REDIS_URL needed
-python -m feedbackforge serve --port 8080
+python -m feedbackforge serve --port 8081
 cd dashboard && npm run dev
 ```
 
@@ -154,7 +154,7 @@ cd dashboard && npm run dev
 
 ```bash
 # Save a session
-curl -X POST http://localhost:8080/api/sessions/save \
+curl -X POST http://localhost:8081/api/sessions/save \
   -H "Content-Type: application/json" \
   -d '{
     "thread_id": "test-123",
@@ -166,13 +166,13 @@ curl -X POST http://localhost:8080/api/sessions/save \
   }'
 
 # Load it back
-curl http://localhost:8080/api/sessions/test-123
+curl http://localhost:8081/api/sessions/test-123
 
 # List all sessions
-curl http://localhost:8080/api/sessions
+curl http://localhost:8081/api/sessions
 
 # Delete it
-curl -X DELETE http://localhost:8080/api/sessions/test-123
+curl -X DELETE http://localhost:8081/api/sessions/test-123
 ```
 
 ### 2. Test in Dashboard
@@ -423,7 +423,7 @@ TTL session:thread-1709123456789
 
 - [ ] Install Redis (optional): `docker run -d -p 6379:6379 redis:7-alpine`
 - [ ] Add `REDIS_URL=redis://localhost:6379` to `.env` (optional)
-- [ ] Start backend: `python -m feedbackforge serve --port 8080`
+- [ ] Start backend: `python -m feedbackforge serve --port 8081`
 - [ ] Start dashboard: `cd dashboard && npm run dev`
 - [ ] Open http://localhost:3001/
 - [ ] Send a message

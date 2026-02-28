@@ -18,7 +18,7 @@ This document provides detailed analysis and actionable suggestions for improvin
 
 ### 🔴 Issue 1: Hardcoded API Credentials
 
-**Location**: `src/feedbackforge/dashboard_agent.py:106-109`
+**Location**: `feedbackforge/dashboard_agent.py:106-109`
 
 **Problem**:
 ```python
@@ -65,7 +65,7 @@ api_version = os.environ.get("AZURE_INFERENCE_API_VERSION", "2025-11-13")
 
 ### Issue 2: Extensive Commented Code
 
-**Location**: `src/feedbackforge/dashboard_agent.py:104-175`
+**Location**: `feedbackforge/dashboard_agent.py:104-175`
 
 **Problem**:
 - 70+ lines of commented/experimental code
@@ -122,7 +122,7 @@ def create_dashboard_agent() -> ChatAgent:
 
 ### Issue 3: Duplicate Tool Definitions
 
-**Location**: `src/feedbackforge/dashboard_agent.py:70-86`
+**Location**: `feedbackforge/dashboard_agent.py:70-86`
 
 **Problem**:
 ```python
@@ -212,7 +212,7 @@ CREATE INDEX idx_feedback_topics ON feedback USING gin(topics);
 CREATE INDEX idx_feedback_sentiment ON feedback(sentiment);
 ```
 
-2. **Data Access Layer** (`src/feedbackforge/database.py`):
+2. **Data Access Layer** (`feedbackforge/database.py`):
 ```python
 from typing import List, Optional
 from sqlalchemy import create_engine, Column, String, Float, Integer, Boolean, TIMESTAMP, JSON
@@ -260,7 +260,7 @@ class FeedbackRepository:
         pass
 ```
 
-3. **Update DataStore** (`src/feedbackforge/data_store.py`):
+3. **Update DataStore** (`feedbackforge/data_store.py`):
 ```python
 class FeedbackDataStore:
     def __init__(self, repository: Optional[FeedbackRepository] = None):
@@ -298,7 +298,7 @@ class FeedbackDataStore:
 
 **Current State**: Only mock data, no real feedback ingestion
 
-**Proposed Endpoints** (`src/feedbackforge/api/ingestion.py`):
+**Proposed Endpoints** (`feedbackforge/api/ingestion.py`):
 ```python
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, validator
@@ -362,7 +362,7 @@ async def webhook_receiver(
     return {"status": "success", "id": feedback_item.id}
 ```
 
-**Webhook Parsers** (`src/feedbackforge/integrations/`):
+**Webhook Parsers** (`feedbackforge/integrations/`):
 ```python
 # typeform.py
 class TypeformParser:
@@ -455,7 +455,7 @@ class SentimentAnalyzer(Executor):
         }
 ```
 
-4. **Comprehensive Error Types** (`src/feedbackforge/exceptions.py`):
+4. **Comprehensive Error Types** (`feedbackforge/exceptions.py`):
 ```python
 class FeedbackForgeException(Exception):
     """Base exception for FeedbackForge."""
@@ -632,7 +632,7 @@ def test_info_endpoint(client):
 
 **Implementation**:
 ```python
-# src/feedbackforge/notifications/notifier.py
+# feedbackforge/notifications/notifier.py
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
@@ -686,7 +686,7 @@ class NotificationService:
 
 **Implementation**:
 ```python
-# src/feedbackforge/reporting/generator.py
+# feedbackforge/reporting/generator.py
 from jinja2 import Template
 import pdfkit
 from datetime import datetime
@@ -716,7 +716,7 @@ class ReportGenerator:
 
 **Implementation**:
 ```python
-# src/feedbackforge/analysis/ab_testing.py
+# feedbackforge/analysis/ab_testing.py
 from scipy import stats
 from typing import List, Dict, Tuple
 
@@ -926,7 +926,7 @@ spec:
 
 **Application Insights Integration**:
 ```python
-# src/feedbackforge/monitoring/telemetry.py
+# feedbackforge/monitoring/telemetry.py
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from opencensus.ext.azure.trace_exporter import AzureExporter
 from opencensus.trace.samplers import ProbabilitySampler
@@ -1007,7 +1007,7 @@ class CacheManager:
 ### 2. Connection Pooling
 
 ```python
-# src/feedbackforge/database.py
+# feedbackforge/database.py
 from sqlalchemy.pool import QueuePool
 
 engine = create_async_engine(

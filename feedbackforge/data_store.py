@@ -44,6 +44,7 @@ class CosmosDBFeedbackStore:
         self.database_name = database_name
         self.container_name = container_name
         self.alerts_container_name = "alerts"
+        self.faqs_container_name = "faqs"
 
         # Initialize client with key or DefaultAzureCredential
         if key:
@@ -81,6 +82,13 @@ class CosmosDBFeedbackStore:
                 partition_key=PartitionKey(path="/status")
             )
             logger.info(f"✅ Container '{self.alerts_container_name}' ready")
+
+            # Create FAQs container
+            self.faqs_container = self.database.create_container_if_not_exists(
+                id=self.faqs_container_name,
+                partition_key=PartitionKey(path="/id")
+            )
+            logger.info(f"✅ Container '{self.faqs_container_name}' ready")
 
         except exceptions.CosmosHttpResponseError as e:
             logger.error(f"Failed to initialize Cosmos DB: {e}")
@@ -526,6 +534,66 @@ class CosmosDBFeedbackStore:
             logger.error(f"Failed to get surveys: {e}")
             return []
 
+    @trace_operation("cosmos.save_faq")
+    def save_faq(self, faq_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Save FAQ generation result to Cosmos DB.
+
+        Args:
+            faq_data: FAQ data containing generated_at, faq_count, and faqs list
+
+        Returns:
+            Saved document with ID
+        """
+        try:
+            # Create unique ID from timestamp
+            faq_id = faq_data.get('generated_at', datetime.now().isoformat()).replace(':', '-').replace('.', '-')
+
+            # Prepare document
+            document = {
+                'id': faq_id,
+                'generated_at': faq_data.get('generated_at', datetime.now().isoformat()),
+                'faq_count': faq_data.get('faq_count', 0),
+                'theme_count': faq_data.get('theme_count', 0),
+                'faqs': faq_data.get('faqs', [])
+            }
+
+            # Save to Cosmos DB
+            result = self.faqs_container.upsert_item(body=document)
+            logger.info(f"✅ Saved {document['faq_count']} FAQs to Cosmos DB (ID: {faq_id})")
+
+            return result
+        except exceptions.CosmosHttpResponseError as e:
+            logger.error(f"Failed to save FAQs to Cosmos DB: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error saving FAQs: {e}")
+            raise
+
+    @trace_operation("cosmos.get_faqs")
+    def get_faqs(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Retrieve saved FAQs from Cosmos DB.
+
+        Args:
+            limit: Maximum number of FAQ documents to return (default: 10)
+
+        Returns:
+            List of FAQ documents, sorted by generated_at (most recent first)
+        """
+        try:
+            query = "SELECT * FROM c ORDER BY c.generated_at DESC"
+            items = list(self.faqs_container.query_items(
+                query=query,
+                enable_cross_partition_query=True
+            ))
+
+            # Limit results
+            return items[:limit] if limit else items
+        except Exception as e:
+            logger.error(f"Failed to retrieve FAQs from Cosmos DB: {e}")
+            return []
+
 
 class InMemoryFeedbackStore:
     """In-memory fallback data store."""
@@ -534,6 +602,7 @@ class InMemoryFeedbackStore:
         self.feedback_list: List[FeedbackItem] = []
         self.analysis_results: Optional[Dict[str, Any]] = None
         self.alerts_list: List[Dict[str, Any]] = []
+        self.faqs_list: List[Dict[str, Any]] = []
         self.load_mock_data()
 
     def load_mock_data(self) -> None:
@@ -702,6 +771,62 @@ class InMemoryFeedbackStore:
             )
             for f in self.feedback
         ]
+
+    def save_faq(self, faq_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Save FAQ generation result to in-memory storage.
+
+        Args:
+            faq_data: FAQ data containing generated_at, faq_count, and faqs list
+
+        Returns:
+            Saved document with ID
+        """
+        try:
+            # Create unique ID from timestamp
+            faq_id = faq_data.get('generated_at', datetime.now().isoformat()).replace(':', '-').replace('.', '-')
+
+            # Prepare document
+            document = {
+                'id': faq_id,
+                'generated_at': faq_data.get('generated_at', datetime.now().isoformat()),
+                'faq_count': faq_data.get('faq_count', 0),
+                'theme_count': faq_data.get('theme_count', 0),
+                'faqs': faq_data.get('faqs', [])
+            }
+
+            # Save to in-memory list
+            self.faqs_list.append(document)
+            logger.info(f"✅ Saved {document['faq_count']} FAQs to in-memory storage (ID: {faq_id})")
+
+            return document
+        except Exception as e:
+            logger.error(f"Unexpected error saving FAQs: {e}")
+            raise
+
+    def get_faqs(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Retrieve saved FAQs from in-memory storage.
+
+        Args:
+            limit: Maximum number of FAQ documents to return (default: 10)
+
+        Returns:
+            List of FAQ documents, sorted by generated_at (most recent first)
+        """
+        try:
+            # Sort by generated_at descending
+            sorted_faqs = sorted(
+                self.faqs_list,
+                key=lambda x: x.get('generated_at', ''),
+                reverse=True
+            )
+
+            # Limit results
+            return sorted_faqs[:limit] if limit else sorted_faqs
+        except Exception as e:
+            logger.error(f"Failed to retrieve FAQs from in-memory storage: {e}")
+            return []
 
 
 # Initialize global data store
