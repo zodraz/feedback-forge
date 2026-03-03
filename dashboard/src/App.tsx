@@ -8,7 +8,7 @@ interface Message {
   timestamp: Date;
 }
 
-// Load API URLs from environment variables
+// Load API URLs from environment variables: agent and api
 const AG_UI_URL = import.meta.env.VITE_AG_UI_URL || "http://localhost:8081/agent";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/api";
 
