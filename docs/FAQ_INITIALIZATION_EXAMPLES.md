@@ -25,7 +25,7 @@ faqs = generator.generate_faq_entries(themes)
 - `.env` must have:
   ```bash
   AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
-  AZURE_SEARCH_KEY=your-key
+  AZURE_SEARCH_API_KEY=your-key
   AZURE_SEARCH_INDEX_NAME=feedback-index
   ```
 
@@ -300,7 +300,7 @@ Your `.env` file should have:
 ```bash
 # Required for RAG
 AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
-AZURE_SEARCH_KEY=your-admin-key-here
+AZURE_SEARCH_API_KEY=your-admin-key-here
 AZURE_SEARCH_INDEX_NAME=feedback-index  # Optional, default: feedback-index
 
 # Required for embeddings
@@ -321,7 +321,7 @@ AZURE_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```bash
 # Verify vars are set
 echo $AZURE_SEARCH_ENDPOINT
-echo $AZURE_SEARCH_KEY
+echo $AZURE_SEARCH_API_KEY
 ```
 
 **Solution 2:** Initialize explicitly

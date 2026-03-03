@@ -52,7 +52,7 @@ class RAGSetup:
         # Assign to instance variables (types declared at class level)
         # Use cast() to narrow type after validation
         self.search_endpoint = cast(str, endpoint)
-        self.search_key = search_key or os.environ.get("AZURE_SEARCH_KEY")
+        self.search_key = search_key or os.environ.get("AZURE_SEARCH_API_KEY")
         # Ensure index_name is always a string with fallback
         self.index_name = cast(str, index_name or os.environ.get("AZURE_SEARCH_INDEX_NAME") or "feedback-index")
         self.embedding_dimensions = embedding_dimensions

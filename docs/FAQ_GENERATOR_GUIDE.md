@@ -23,7 +23,7 @@ You need Azure AI Search set up (see [RAG_QUICKSTART.md](./RAG_QUICKSTART.md)):
 ```bash
 # Check .env has these:
 AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
-AZURE_SEARCH_KEY=your-key
+AZURE_SEARCH_API_KEY=your-key
 AZURE_OPENAI_ENDPOINT=...
 AZURE_OPENAI_KEY=...
 ```

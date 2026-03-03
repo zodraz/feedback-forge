@@ -23,6 +23,8 @@ dependencies = [
     "agent-framework-ag-ui==1.0.0b251209",
     "agent-framework-devui==1.0.0b251209",
     "agent-framework-azure-ai==1.0.0b251209",
+    "azure-ai-agents==1.2.0b5",
+    "azure-ai-projects==2.0.0b2",
     "azure-identity>=1.15.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
@@ -57,12 +59,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/feedbackforge"]
+packages = ["feedbackforge"]
 
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
-include = ["src"]
+include = ["feedbackforge"]
 
 [tool.ruff]
 line-length = 120

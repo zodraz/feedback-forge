@@ -8,7 +8,7 @@ Make sure you have RAG configured:
 ```bash
 # .env must have:
 AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
-AZURE_SEARCH_KEY=your-key
+AZURE_SEARCH_API_KEY=your-key
 ```
 
 If not, run: `python -m feedbackforge.rag_setup` first (see [RAG_QUICKSTART.md](./RAG_QUICKSTART.md))

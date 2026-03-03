@@ -22,7 +22,7 @@ def test_rag_integration():
     print("1. Checking RAG configuration...")
     if not rag_search_client:
         print("❌ FAILED: RAG client not configured")
-        print("   Set AZURE_SEARCH_ENDPOINT and AZURE_SEARCH_KEY in .env")
+        print("   Set AZURE_SEARCH_ENDPOINT and AZURE_SEARCH_API_KEY in .env")
         print("   Then run: python -m feedbackforge.rag_setup")
         return False
 

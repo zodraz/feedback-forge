@@ -15,7 +15,7 @@ pip install -e .
 Add to `.env`:
 ```bash
 AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
-AZURE_SEARCH_KEY=your-admin-key
+AZURE_SEARCH_API_KEY=your-admin-key
 AZURE_OPENAI_ENDPOINT=https://your-openai.openai.azure.com/
 AZURE_OPENAI_KEY=your-key
 AZURE_OPENAI_EMBEDDING_MODEL=text-embedding-3-small

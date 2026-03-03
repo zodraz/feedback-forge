@@ -14,7 +14,7 @@ def example_1_simple():
     Example 1: Simplest usage - auto-initialize from .env
 
     Prerequisites:
-    - .env file with AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_KEY
+    - .env file with AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_API_KEY
     - Azure AI Search index created (run: python -m feedbackforge.rag_setup)
     """
     print("=" * 70)
@@ -57,7 +57,7 @@ def example_2_with_error_handling():
         print("❌ Azure AI Search not configured!")
         print("   Please set environment variables:")
         print("   - AZURE_SEARCH_ENDPOINT")
-        print("   - AZURE_SEARCH_KEY")
+        print("   - AZURE_SEARCH_API_KEY")
         return
 
     print("✅ RAG client initialized")
@@ -111,7 +111,7 @@ def example_3_custom_config():
     custom_rag = FeedbackRAGSearch(
         search_endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
         index_name="feedback-custom",  # Custom index name
-        api_key=os.getenv("AZURE_SEARCH_KEY")
+        api_key=os.getenv("AZURE_SEARCH_API_KEY")
     )
 
     # Pass to generator

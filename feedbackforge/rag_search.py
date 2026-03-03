@@ -511,7 +511,7 @@ def create_rag_search_client() -> Optional[FeedbackRAGSearch]:
 
     Environment Variables:
         AZURE_SEARCH_ENDPOINT: Azure AI Search endpoint
-        AZURE_SEARCH_KEY: API key (optional, uses DefaultAzureCredential if not set)
+        AZURE_SEARCH_API_KEY: API key (optional, uses DefaultAzureCredential if not set)
         AZURE_SEARCH_INDEX_NAME: Index name (default: feedback-index)
 
     Returns:
@@ -524,7 +524,7 @@ def create_rag_search_client() -> Optional[FeedbackRAGSearch]:
         return None
 
     try:
-        search_key = os.environ.get("AZURE_SEARCH_KEY")
+        search_key = os.environ.get("AZURE_SEARCH_API_KEY")
         index_name = os.environ.get("AZURE_SEARCH_INDEX_NAME", "feedback-index")
 
         rag_client = FeedbackRAGSearch(

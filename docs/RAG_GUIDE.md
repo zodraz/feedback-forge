@@ -77,7 +77,7 @@ Add to your `.env` file:
 ```bash
 # Azure AI Search (Required for RAG)
 AZURE_SEARCH_ENDPOINT=https://feedbackforge-search.search.windows.net
-AZURE_SEARCH_KEY=your-admin-key-here
+AZURE_SEARCH_API_KEY=your-admin-key-here
 AZURE_SEARCH_INDEX_NAME=feedback-index  # Optional, default: feedback-index
 
 # Azure OpenAI Embeddings (Required for RAG)

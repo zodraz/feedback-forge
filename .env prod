@@ -1,0 +1,63 @@
+# Azure AI
+AZURE_AI_PROJECT_ENDPOINT="https://feedbackforge-resource.services.ai.azure.com/api/projects/feedbackforge"
+AZURE_AI_MODEL_DEPLOYMENT_NAME="gpt-5.1-chat"
+# Bing connection for web search (optional, used by samples with web search)
+BING_CONNECTION_ID=""
+# Azure AI Search for RAG (Optional - enables semantic search and vector embeddings)
+AZURE_SEARCH_ENDPOINT=https://feedbackforge-search.search.windows.net
+AZURE_SEARCH_API_KEY=9i6Ops31CXnM3Rwu7lyMzo0dotLRrs0XNeAgO63VPhAzSeC85XWK
+AZURE_SEARCH_INDEX_NAME=feedback-index 
+# Note: For agentic mode Knowledge Bases, also set AZURE_OPENAI_ENDPOINT below
+# (different from AZURE_AI_PROJECT_ENDPOINT - Knowledge Base needs OpenAI endpoint for model calls)
+# OpenAI
+OPENAI_API_KEY=""
+OPENAI_CHAT_MODEL_ID=""
+OPENAI_RESPONSES_MODEL_ID=""
+# Azure OpenAI
+AZURE_OPENAI_ENDPOINT="https://feedbackforge-resource.cognitiveservices.azure.com/"
+AZURE_OPENAI_CHAT_DEPLOYMENT_NAME="gpt-5.1-chat"
+AZURE_OPENAI_KEY="5de8SY7aafnGjCqLV1TVqlVJZJNK92edIu36zo6oCRcda8fnc8URJQQJ99BLACfhMk5XJ3w3AAAAACOGJkle"
+AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME="gpt-5.1-chat"
+AZURE_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+#API Gateway
+AZURE_API_GATEWAY_ENDPOINT="https://feedback-forge-api-mgm-001.azure-api.net/models/openai"
+AZURE_API_GATEWAY_KEY="693ae3956586c00059070001"
+AZURE_AI_MODEL_DEPLOYMENT_VERSION="2025-11-13"
+
+# Mem0
+MEM0_API_KEY=""
+# Copilot Studio
+COPILOTSTUDIOAGENT__ENVIRONMENTID=""
+COPILOTSTUDIOAGENT__SCHEMANAME=""
+COPILOTSTUDIOAGENT__TENANTID=""
+COPILOTSTUDIOAGENT__AGENTAPPID=""
+# Anthropic
+ANTHROPIC_FOUNDRY_API_KEY=5de8SY7aafnGjCqLV1TVqlVJZJNK92edIu36zo6oCRcda8fnc8URJQQJ99BLACfhMk5XJ3w3AAAAACOGJkle
+CLAUDE_CODE_USE_FOUNDRY=1
+ANTHROPIC_FOUNDRY_RESOURCE=feedbackforge-resource
+ANTHROPIC_DEFAULT_SONNET_MODEL='claude-sonnet-4-5'
+# Ollama
+OLLAMA_ENDPOINT=""
+OLLAMA_MODEL=""
+# OpenTelemetry & Application Insights (Optional - telemetry disabled if not set)
+APPLICATIONINSIGHTS_CONNECTION_STRING=InstrumentationKey=d58332d8-f1c6-4f80-aa97-0ff65d7a6753;IngestionEndpoint=https://swedencentral-0.in.applicationinsights.azure.com/;LiveEndpoint=https://swedencentral.livediagnostics.monitor.azure.com/;ApplicationId=3d1f4c22-e04d-4e1f-9061-8248f06b7d94
+OTEL_SERVICE_NAME=feedbackforge  # Optional: Override service name
+DISABLE_TELEMETRY=false  # Set to "true" to disable telemetry
+
+# Cosmos DB Configuration (Optional - falls back to in-memory if not set)
+# Three authentication methods:
+#   1. Primary Key: Set COSMOS_DB_AUTH_METHOD=primary_key and COSMOS_DB_KEY
+#   2. DefaultAzureCredential: Set COSMOS_DB_AUTH_METHOD=default_credential (requires 'az login')
+#   3. Auto (default): Uses key if set, otherwise DefaultAzureCredential
+COSMOS_DB_ENDPOINT=https://feedbackforge-db.documents.azure.com:443/
+COSMOS_DB_AUTH_METHOD=primary_key  # Options: auto | primary_key | default_credential
+COSMOS_DB_KEY=xvJVbh826H55cnbVeqjucUttn3Srt0Pr2eMKTDA2mhbJZhLMcV2u2UUg8Y99XP8N3GY2zX3gAXdKACDb4WwHCQ==
+COSMOS_DB_DATABASE=feedbackforge
+COSMOS_DB_CONTAINER=feedback
+
+# Redis Configuration (Optional - falls back to in-memory if not set)
+# Install Redis: docker run -d -p 6379:6379 redis:7-alpine
+REDIS_URL=redis://localhost:6379
+
+# Session Configuration
+SESSION_TTL=3600  # Session time-to-live in seconds (default: 1 hour)

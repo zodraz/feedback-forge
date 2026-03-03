@@ -91,7 +91,7 @@ Make sure your `.env` file is configured:
 ```bash
 # Azure AI Search (for RAG)
 AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
-AZURE_SEARCH_KEY=your-key
+AZURE_SEARCH_API_KEY=your-key
 
 # Azure OpenAI (for embeddings)
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/

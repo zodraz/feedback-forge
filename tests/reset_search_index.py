@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 def main():
     # Check environment variables
     search_endpoint = os.environ.get("AZURE_SEARCH_ENDPOINT")
-    search_key = os.environ.get("AZURE_SEARCH_KEY")
+    search_key = os.environ.get("AZURE_SEARCH_API_KEY")
     index_name = os.environ.get("AZURE_SEARCH_INDEX_NAME", "feedback-index")
 
     if not search_endpoint:
