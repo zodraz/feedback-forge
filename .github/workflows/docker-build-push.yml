@@ -115,8 +115,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-faqs.outputs.tags }}
           labels: ${{ steps.meta-faqs.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.FAQS_IMAGE }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.FAQS_IMAGE }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Image digest summary
         run: |
