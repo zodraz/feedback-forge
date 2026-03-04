@@ -93,12 +93,12 @@ def create_dashboard_agent() -> ChatAgent:
         - AZURE_AI_PROJECT_ENDPOINT: Azure AI Foundry project endpoint
         - AZURE_AI_MODEL_DEPLOYMENT_NAME: Model deployment name
     """
-    # Create credential and project client
-    credential = DefaultAzureCredential()
-    project_client = AIProjectClient(
-        endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        credential=credential,
-    )
+    # # # # Create credential and project client
+    # # # credential = DefaultAzureCredential()
+    # # # project_client = AIProjectClient(
+    # # #     endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+    # # #     credential=credential,
+    # # # )
     
 
     from openai import AzureOpenAI
@@ -120,11 +120,11 @@ def create_dashboard_agent() -> ChatAgent:
     # )
 
     credential = AzureCliCredential()
-    chat_client = AzureOpenAIChatClient(credential=credential,
-            endpoint=os.environ["AZURE_API_GATEWAY_ENDPOINT"],
-            api_key=os.environ["AZURE_API_GATEWAY_KEY"],
-            deployment_name=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"])
-            # api_version=os.environ["AZURE_AI_MODEL_DEPLOYMENT_VERSION"])
+    # # # # chat_client = AzureOpenAIChatClient(credential=credential,
+    # # # #         endpoint=os.environ["AZURE_API_GATEWAY_ENDPOINT"],
+    # # # #         api_key=os.environ["AZURE_API_GATEWAY_KEY"],
+    # # # #         deployment_name=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"])
+    # # # #         # api_version=os.environ["AZURE_AI_MODEL_DEPLOYMENT_VERSION"])
     
     chat_client = AzureOpenAIChatClient(credential=credential,
             endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
