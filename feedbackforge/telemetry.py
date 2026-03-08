@@ -21,6 +21,9 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION, SERVICE_INSTANCE_ID
 
+from azure.monitor.opentelemetry import configure_azure_monitor
+
+
 logger = logging.getLogger(__name__)
 
 # Global tracer and meter
@@ -97,6 +100,49 @@ def setup_telemetry(service_name: str = "feedbackforge", service_version: str = 
         logger.error(f"⚠️ Failed to configure OpenTelemetry: {e}")
         logger.info("   Application will continue without telemetry.")
         return False
+
+
+def setup_telemetry_extended(enable_live_metrics: bool = True):
+    """
+    Extended telemetry setup using azure-monitor-opentelemetry auto-configuration.
+
+    This provides a simplified way to configure Azure Monitor with additional features
+    like live metrics and automatic instrumentation for common libraries.
+
+    Args:
+        enable_live_metrics: Enable live metrics streaming. Defaults to True.
+
+    Environment Variables:
+        APPLICATIONINSIGHTS_CONNECTION_STRING: Required for Azure Monitor
+
+    Example:
+        setup_telemetry_extended(enable_live_metrics=True)
+    """
+    connection_string = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
+
+    if not connection_string:
+        logger.warning("⚠️ APPLICATIONINSIGHTS_CONNECTION_STRING not set, skipping extended telemetry")
+        return
+
+    if os.environ.get("DISABLE_TELEMETRY", "").lower() == "true":
+        logger.info("📊 Extended telemetry disabled via DISABLE_TELEMETRY environment variable")
+        return
+
+    try:
+        # Configure Azure Monitor with OpenTelemetry
+        # This auto-instruments common frameworks and libraries
+        configure_azure_monitor(
+            connection_string=connection_string,
+            enable_live_metrics=enable_live_metrics,
+        )
+        logger.info("✅ Extended telemetry with Azure Monitor auto-instrumentation configured")
+        if enable_live_metrics:
+            logger.info("   Live metrics enabled")
+            
+        
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to configure extended telemetry: {e}")
+    
 
 
 def instrument_app(app):

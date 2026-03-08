@@ -42,6 +42,7 @@ dependencies = [
     "opentelemetry-instrumentation-redis>=0.43b0",
     "opentelemetry-instrumentation-httpx>=0.43b0",
     "azure-monitor-opentelemetry-exporter>=1.0.0b21",
+    "azure-monitor-opentelemetry>=1.8.0",
 ]
 
 [project.optional-dependencies]

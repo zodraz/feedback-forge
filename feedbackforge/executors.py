@@ -7,12 +7,14 @@ Executor classes for the multi-agent workflow pipeline.
 
 import json
 import logging
+import os
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, List
 
-from agent_framework import Executor, WorkflowContext, handler
-from agent_framework_azure_ai import AzureAIClient
+from agent_framework import Executor, WorkflowContext, handler, ChatAgent
+from agent_framework.azure import AzureAIAgentClient
+from azure.identity.aio import DefaultAzureCredential
 
 from .models import AnalysisState
 
@@ -36,9 +38,18 @@ def parse_json_response(text: str) -> Dict[str, Any]:
 class InitialOrchestrator(Executor):
     """Initial orchestrator that analyzes input and plans execution."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "orchestrator_initial"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "orchestrator_initial"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="InitialOrchestrator",
+            agent_description="Initial orchestrator for workflow planning"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="InitialOrchestrator",
+            agent_id="InitialOrchestrator:1",
             instructions="""You are the Initial Orchestrator Agent. Validate survey data, assess quality, plan analysis.
 Return JSON: {"proceed": true/false, "survey_count": N, "quality_assessment": "good/fair/poor", "summary": "..."}"""
         )
@@ -63,9 +74,18 @@ Return JSON: {"proceed": true/false, "survey_count": N, "quality_assessment": "g
 class DataPreprocessor(Executor):
     """Executor for data preprocessing."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "preprocessor"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "preprocessor"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="DataPreprocessor",
+            agent_description="Data preprocessing agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="DataPreprocessor",
+            agent_id="asst_xXHIE4eAiMcRCO2XU98pdVyw",
             instructions="""Clean and prepare survey data. Return JSON: {"cleaned_count": N, "spam_count": N, "summary": "..."}"""
         )
         super().__init__(id=id)
@@ -86,9 +106,18 @@ class DataPreprocessor(Executor):
 class SentimentAnalyzer(Executor):
     """Sentiment analysis executor."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "sentiment"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "sentiment"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="SentimentAnalyzer",
+            agent_description="Sentiment analysis agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="SentimentAnalyzer",
+            agent_id="SentimentAnalyzer:1",
             instructions="""Analyze sentiment. Return JSON: {"overall_distribution": {"positive": %, "negative": %, "neutral": %}, "urgent_flags": [], "summary": "..."}"""
         )
         super().__init__(id=id)
@@ -105,9 +134,18 @@ class SentimentAnalyzer(Executor):
 class TopicExtractor(Executor):
     """Topic extraction executor."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "topics"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "topics"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="TopicExtractor",
+            agent_description="Topic extraction agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="TopicExtractor",
+            agent_id="TopicExtractor:3",
             instructions="""Extract topics. Return JSON: {"topic_distribution": {}, "emerging_themes": [], "summary": "..."}"""
         )
         super().__init__(id=id)
@@ -124,9 +162,18 @@ class TopicExtractor(Executor):
 class AnomalyDetector(Executor):
     """Anomaly detection executor."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "anomaly"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "anomaly"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="AnomalyDetector",
+            agent_description="Anomaly detection agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="AnomalyDetector",
+            agent_id="AnomalyDetector:2",
             instructions="""Detect anomalies. Return JSON: {"anomalies_detected": [], "crisis_indicators": [], "summary": "..."}"""
         )
         super().__init__(id=id)
@@ -143,8 +190,16 @@ class AnomalyDetector(Executor):
 class CompetitiveIntelligence(Executor):
     """Competitive intelligence executor."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "competitive"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "competitive"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="CompetitiveIntelligence",
+            agent_description="Competitive intelligence agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="CompetitiveIntelligence",
             instructions="""Extract competitor info. Return JSON: {"competitor_mentions": [], "win_loss_analysis": {}, "summary": "..."}"""
         )
@@ -166,8 +221,16 @@ class CompetitiveIntelligence(Executor):
 class InsightMiner(Executor):
     """Aggregates parallel results and mines insights (fan-in aggregator)."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "insights"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "insights"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="InsightMiner",
+            agent_description="Insight mining agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="InsightMiner",
             instructions="""Synthesize analyses. Return JSON: {"key_insights": [], "patterns": [], "root_causes": [], "summary": "..."}"""
         )
@@ -204,8 +267,16 @@ class InsightMiner(Executor):
 class PriorityRanker(Executor):
     """Priority ranking executor."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "priority"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "priority"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="PriorityRanker",
+            agent_description="Priority ranking agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="PriorityRanker",
             instructions="""Rank priorities. Return JSON: {"priority_matrix": [], "quick_wins": [], "churn_risks": [], "summary": "..."}"""
         )
@@ -223,8 +294,16 @@ class PriorityRanker(Executor):
 class ActionGenerator(Executor):
     """Action item generator executor."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "actions"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "actions"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="ActionGenerator",
+            agent_description="Action generation agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="ActionGenerator",
             instructions="""Generate actions. Return JSON: {"action_items": [], "success_metrics": [], "summary": "..."}"""
         )
@@ -246,8 +325,16 @@ class ActionGenerator(Executor):
 class ReportGenerator(Executor):
     """Final report generator (fan-in aggregator)."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "reporter"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "reporter"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="ReportGenerator",
+            agent_description="Report generation agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="ReportGenerator",
             instructions="""Generate report. Return JSON: {"executive_summary": "", "key_metrics": {}, "critical_issues": [], "recommendations": []}"""
         )
@@ -280,8 +367,16 @@ class ReportGenerator(Executor):
 class FinalOrchestrator(Executor):
     """Final orchestrator review."""
 
-    def __init__(self, chat_client: AzureAIClient, id: str = "orchestrator_final"):
-        self.agent = chat_client.create_agent(
+    def __init__(self, credential: DefaultAzureCredential, id: str = "orchestrator_final"):
+        chat_client = AzureAIAgentClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="FinalOrchestrator",
+            agent_description="Final orchestrator review agent"
+        )
+        self.agent = ChatAgent(
+            chat_client=chat_client,
             name="FinalOrchestrator",
             instructions="""Review results. Return JSON: {"quality_assessment": "", "confidence_score": 0.0-1.0, "final_recommendations": [], "next_steps": []}"""
         )

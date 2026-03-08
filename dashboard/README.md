@@ -20,7 +20,7 @@ cd /home/abel/git/agent-framework/python
 python -m feedbackforge serve
 ```
 
-The server will start at `http://localhost:8080`.
+The server will start at `http://localhost:8081`.
 
 ### 2. Start the Frontend
 
@@ -43,7 +43,7 @@ The frontend will start at `http://localhost:3000`.
 ┌─────────────────────┐     AG-UI Protocol     ┌─────────────────────┐
 │   React Frontend    │ ◄─────────────────────► │  FeedbackForge API  │
 │   (Custom AG-UI)    │      SSE Streaming      │  (FastAPI + AG-UI)  │
-│   localhost:3000    │                         │   localhost:8080    │
+│   localhost:3000    │                         │   localhost:8081    │
 └─────────────────────┘                         └─────────────────────┘
 ```
 
@@ -90,7 +90,7 @@ npm run preview
 The backend URL is configured in `src/App.tsx`:
 
 ```tsx
-const AG_UI_URL = "http://localhost:8080";
+const AG_UI_URL = "http://localhost:8081";
 ```
 
 For production, update this to your deployed AG-UI server URL.
@@ -124,6 +124,6 @@ python -m feedbackforge serve
 ### No Response
 
 Check the browser console for errors. Ensure:
-1. The AG-UI server is running on port 8080
+1. The AG-UI server is running on port 8081
 2. No firewall is blocking the connection
 3. The server logs show incoming requests

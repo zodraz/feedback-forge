@@ -15,7 +15,7 @@ Beautiful web interface for viewing auto-generated FAQs from customer feedback s
 
 1. **Backend server running** with FAQ data in CosmosDB:
    ```bash
-   python -m feedbackforge serve --port 8080
+   python -m feedbackforge serve --port 8081
    ```
 
 2. **FAQs generated** and saved to CosmosDB:
@@ -100,7 +100,7 @@ Returns:
 
 Edit `src/App.tsx`:
 ```typescript
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = 'http://localhost:8081/api'
 ```
 
 ### Change Port
@@ -119,7 +119,7 @@ Modify `src/App.css` to customize colors, fonts, and layout.
 ## Troubleshooting
 
 ### No FAQs appear
-- Check that backend is running on port 8080
+- Check that backend is running on port 8081
 - Verify FAQs exist in CosmosDB: run `python -m feedbackforge faq` first
 - Check browser console for errors (F12)
 
@@ -128,7 +128,7 @@ Modify `src/App.css` to customize colors, fonts, and layout.
 - Check backend CORS configuration
 
 ### Connection refused
-- Ensure backend is running: `python -m feedbackforge serve --port 8080`
+- Ensure backend is running: `python -m feedbackforge serve --port 8081`
 - Check that API_BASE_URL matches your backend URL
 
 ## Technologies

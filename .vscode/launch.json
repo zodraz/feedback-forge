@@ -1,6 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python: Feedbackforge DevUI",
             "type": "debugpy",
@@ -13,13 +14,27 @@
                 "PYTHONPATH": "${workspaceFolder}/src"
             }
         },
-         {
+        {
             "name": "Python: AG-UI",
             "type": "debugpy",
             "request": "launch",
             "module": "feedbackforge",
             "args": [
                 "serve"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Feedbackforge: Workflow",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "feedbackforge",
+            "args": [
+                "workflow"
             ],
             "console": "integratedTerminal",
             "justMyCode": false,

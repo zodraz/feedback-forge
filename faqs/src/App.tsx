@@ -124,7 +124,7 @@ function App() {
             <h2>⚠️ Error</h2>
             <p>{error}</p>
             <p style={{ marginTop: '10px', fontSize: '0.9rem' }}>
-              Make sure the backend is running: <code>python -m feedbackforge serve --port 8080</code>
+              Make sure the backend is running: <code>python -m feedbackforge serve --port 8081</code>
             </p>
           </div>
         )}

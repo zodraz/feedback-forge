@@ -28,7 +28,7 @@ FeedbackForge is an AI-powered feedback analysis system that uses multiple speci
 #### 2. Serve Mode (AG-UI) - Production Server
 - FastAPI server with AG-UI protocol (CopilotKit compatible)
 - Best for: Production deployment with frontend integration
-- Default port: 8080
+- Default port: 8081
 - Command: `python -m feedbackforge serve --port 8081`
 
 #### 3. Workflow Mode - Batch Analysis
@@ -142,7 +142,7 @@ Try these queries in the chat:
 ### Serve Mode (Production)
 
 ```bash
-# Start AG-UI server on default port (8080)
+# Start AG-UI server on default port (8081)
 python -m feedbackforge serve --port 8081
 
 # Custom configuration
@@ -296,7 +296,7 @@ Opens at http://localhost:3002/
 **Prerequisites**: Backend server must be running with FAQ data:
 ```bash
 # Terminal 1: Start backend
-python -m feedbackforge serve --port 8081 --port 8080
+python -m feedbackforge serve --port 8081 --port 8081
 
 # Terminal 2: Generate FAQs
 python -m feedbackforge faq

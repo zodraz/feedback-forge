@@ -5,7 +5,7 @@ FeedbackForge AG-UI Server
 Production server using AG-UI protocol for CopilotKit integration.
 
 Usage:
-    python -m feedbackforge serve           # Start AG-UI server on port 8080
+    python -m feedbackforge serve           # Start AG-UI server on port 8081
     python -m feedbackforge serve --port 5000  # Custom port
 
 The server exposes an AG-UI compatible endpoint that can be consumed by:
@@ -49,6 +49,9 @@ FeedbackStoreType = Union["CosmosDBFeedbackStore", "InMemoryFeedbackStore"]
 # Session manager (global)
 session_manager: Optional[Union[SessionManager, InMemorySessionManager]] = None
 
+# Dashboard agent (initialized on startup)
+dashboard_agent = None
+
 
 # Pydantic models for API
 class SessionRequest(BaseModel):
@@ -72,13 +75,34 @@ async def init_session_manager():
     if redis_url:
         try:
             import redis.asyncio as redis
-            redis_client = redis.from_url(redis_url, decode_responses=True)
+            import ssl
+
+            # Configure SSL for Azure Redis Cache
+            ssl_params = {}
+            if redis_url.startswith("rediss://"):
+                # Azure Redis Cache requires SSL but may need cert validation disabled
+                ssl_params = {
+                    "ssl_cert_reqs": ssl.CERT_NONE,  # Disable certificate verification
+                    "ssl_check_hostname": False,
+                }
+                logger.info("🔐 Configuring SSL connection for Azure Redis Cache")
+
+            redis_client = redis.from_url(
+                redis_url,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5,
+                **ssl_params
+            )
+
             # Test connection
+            logger.info(f"🔍 Testing Redis connection to {redis_url.split('@')[1] if '@' in redis_url else redis_url[:30]}...")
             await redis_client.ping()
             session_manager = SessionManager(redis_client, ttl=3600)
             logger.info("✅ Using Redis for session management")
         except Exception as e:
             logger.warning(f"⚠️ Redis connection failed: {e}. Using in-memory sessions.")
+            logger.debug(f"Redis URL: {redis_url[:50]}...", exc_info=True)
             session_manager = InMemorySessionManager(ttl=3600)
     else:
         logger.info("ℹ️ REDIS_URL not set. Using in-memory sessions.")
@@ -120,7 +144,7 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
     # Initialize session manager and metrics on startup
     @app.on_event("startup")
     async def startup_event():
-        global custom_metrics
+        global custom_metrics, dashboard_agent
         await init_session_manager()
 
         # Initialize custom metrics
@@ -128,9 +152,10 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
             custom_metrics = create_custom_metrics()
             logger.info("✅ Custom metrics initialized")
 
-    # Create the dashboard agent and register AG-UI endpoint at /agent
-    agent = create_dashboard_agent()
-    add_agent_framework_fastapi_endpoint(app, agent, "/agent")
+        # Create the dashboard agent and register AG-UI endpoint at /agent
+        dashboard_agent = create_dashboard_agent()
+        add_agent_framework_fastapi_endpoint(app, dashboard_agent, "/agent")
+        logger.info("✅ Dashboard agent initialized and registered at /agent")
 
     @app.get("/", response_class=HTMLResponse)
     async def root(request: Request):

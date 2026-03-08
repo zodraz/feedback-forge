@@ -10,8 +10,6 @@ import os
 from typing import Any, Dict, List
 
 from agent_framework import WorkflowBuilder, WorkflowOutputEvent
-from agent_framework_azure_ai import AzureAIClient
-from azure.ai.projects.aio import AIProjectClient
 from azure.identity.aio import DefaultAzureCredential
 
 from .executors import (
@@ -37,27 +35,22 @@ class SurveyAnalysisWorkflow:
 
     def __init__(self):
         self.credential = DefaultAzureCredential()
-        self.project_client = AIProjectClient(
-            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            credential=self.credential,
-        )
-        self.chat_client = AzureAIClient(project_client=self.project_client)
         self.workflow = None
         self._setup_workflow()
 
     def _setup_workflow(self):
         """Build the workflow DAG with parallel branches."""
-        orchestrator_init = InitialOrchestrator(self.chat_client)
-        preprocessor = DataPreprocessor(self.chat_client)
-        sentiment = SentimentAnalyzer(self.chat_client)
-        topics = TopicExtractor(self.chat_client)
-        anomaly = AnomalyDetector(self.chat_client)
-        competitive = CompetitiveIntelligence(self.chat_client)
-        insights = InsightMiner(self.chat_client)
-        priorities = PriorityRanker(self.chat_client)
-        actions = ActionGenerator(self.chat_client)
-        reporter = ReportGenerator(self.chat_client)
-        orchestrator_final = FinalOrchestrator(self.chat_client)
+        orchestrator_init = InitialOrchestrator(self.credential)
+        preprocessor = DataPreprocessor(self.credential)
+        sentiment = SentimentAnalyzer(self.credential)
+        topics = TopicExtractor(self.credential)
+        anomaly = AnomalyDetector(self.credential)
+        competitive = CompetitiveIntelligence(self.credential)
+        insights = InsightMiner(self.credential)
+        priorities = PriorityRanker(self.credential)
+        actions = ActionGenerator(self.credential)
+        reporter = ReportGenerator(self.credential)
+        orchestrator_final = FinalOrchestrator(self.credential)
 
         builder = WorkflowBuilder()
 

@@ -31,15 +31,20 @@ from feedbackforge.faq_command import FAQCommand
 
 # Configure logging to output to console
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(message)s',  # Clean format without level prefix for better readability
+    level=logging.DEBUG,  # Changed to DEBUG for more detailed logging
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )
+
+# Set agent_framework to DEBUG to see more details
+logging.getLogger('agent_framework').setLevel(logging.DEBUG)
+logging.getLogger('agent_framework.azure').setLevel(logging.DEBUG)
+logging.getLogger('azure').setLevel(logging.WARNING)  # Azure SDK is too verbose
 
 logger = logging.getLogger(__name__)
 
 
-async def run_workflow_mode(max_surveys: int = 20):
+async def run_workflow_mode(max_surveys: int = 200):
     """Run the full multi-agent workflow analysis using shared data store."""
     surveys = feedback_store.get_surveys()[:max_surveys]
 
@@ -80,7 +85,7 @@ def run_chat_mode(port: int = 8090):
     serve(entities=[agent], port=port, auto_open=True)
 
 
-def run_serve_mode(host: str = "0.0.0.0", port: int = 8080, reload: bool = False):
+def run_serve_mode(host: str = "0.0.0.0", port: int = 8081, reload: bool = False):
     """Launch the AG-UI production server (CopilotKit compatible)."""
     from feedbackforge.server import run_server
 
@@ -111,7 +116,7 @@ Examples:
     # Serve mode (AG-UI - production)
     serve_parser = subparsers.add_parser("serve", help="AG-UI production server (CopilotKit)")
     serve_parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind (default: 0.0.0.0)")
-    serve_parser.add_argument("--port", type=int, default=8080, help="Port for server (default: 8080)")
+    serve_parser.add_argument("--port", type=int, default=8081, help="Port for server (default: 8081)")
     serve_parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
 
     # Workflow mode (batch analysis)

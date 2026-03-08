@@ -6,26 +6,36 @@ AI function tools for the chat mode executive dashboard.
 """
 
 import json
+import logging
 from typing import Annotated
 
 from agent_framework import ai_function
 
 from .data_store import feedback_store
 
+logger = logging.getLogger(__name__)
+
 
 @ai_function
 def get_weekly_summary() -> str:
     """Get weekly feedback summary with sentiment, top issues, and urgent items."""
-    summary = feedback_store.get_weekly_summary()
-    return json.dumps({
-        "total_responses": summary["total_responses"],
-        "sentiment": summary["sentiment"],
-        "top_issues": [
-            {"issue": i[0], "mentions": i[1], "priority": "P0" if i[1] > 40 else "P1" if i[1] > 25 else "P2"}
-            for i in summary["top_issues"]
-        ],
-        "urgent_items": summary["urgent_count"],
-    }, indent=2)
+    try:
+        logger.debug("📊 Calling get_weekly_summary tool")
+        summary = feedback_store.get_weekly_summary()
+        result = json.dumps({
+            "total_responses": summary["total_responses"],
+            "sentiment": summary["sentiment"],
+            "top_issues": [
+                {"issue": i[0], "mentions": i[1], "priority": "P0" if i[1] > 40 else "P1" if i[1] > 25 else "P2"}
+                for i in summary["top_issues"]
+            ],
+            "urgent_items": summary["urgent_count"],
+        }, indent=2)
+        logger.debug("✅ get_weekly_summary completed")
+        return result
+    except Exception as e:
+        logger.error(f"❌ Error in get_weekly_summary: {e}", exc_info=True)
+        return json.dumps({"error": str(e), "message": "Failed to retrieve weekly summary"}, indent=2)
 
 
 @ai_function

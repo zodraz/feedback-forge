@@ -8,14 +8,10 @@ ChatAgent creation for the executive dashboard assistant.
 import os
 
 from agent_framework import ChatAgent
-from agent_framework_devui import register_cleanup
-from agent_framework_azure_ai import AzureAIClient
-# from agent_framework_azure_ai import AzureOpenAIClient
-from azure.identity import AzureCliCredential
-# Microsoft Agent Framework with native Azure OpenAI support  
-from agent_framework.azure import AzureOpenAIChatClient
-from azure.ai.projects.aio import AIProjectClient
 from azure.identity.aio import DefaultAzureCredential
+from agent_framework.azure import AzureAIAgentClient
+import json
+from .data_store import feedback_store
 
 from .chat_tools import (
     get_weekly_summary,
@@ -57,33 +53,32 @@ TOOLS = [
 ]
 
 
+def validate_tools():
+    """Validate that all tools are properly registered and data store is accessible."""
+    import logging
+    logger = logging.getLogger(__name__)
 
+    logger.info("🔍 Validating data store and tools...")
 
-from agents import Agent, Runner, function_tool
-import json
-from typing import Annotated
+    # Check data store
+    try:
+        feedback_count = len(feedback_store.feedback)
+        logger.info(f"   ✅ Data store initialized: {feedback_count} feedback items")
+    except Exception as e:
+        logger.error(f"   ❌ Data store not initialized: {e}", exc_info=True)
+        raise
 
-from agent_framework import ai_function
+    # Verify tools are callable
+    try:
+        logger.info(f"   ✅ Tools registered: {len(TOOLS)}")
+        for tool in TOOLS:
+            tool_name = getattr(tool, '__name__', str(tool))
+            logger.debug(f"      - {tool_name}")
+    except Exception as e:
+        logger.error(f"   ❌ Tools validation failed: {e}", exc_info=True)
+        raise
 
-from .data_store import feedback_store
-
-@function_tool
-def get_weekly_summary2() -> str:
-    """Get weekly feedback summary with sentiment, top issues, and urgent items."""
-    summary = feedback_store.get_weekly_summary()
-    return json.dumps({
-        "total_responses": summary["total_responses"],
-        "sentiment": summary["sentiment"],
-        "top_issues": [
-            {"issue": i[0], "mentions": i[1], "priority": "P0" if i[1] > 40 else "P1" if i[1] > 25 else "P2"}
-            for i in summary["top_issues"]
-        ],
-        "urgent_items": summary["urgent_count"],
-    }, indent=2)
-    
-TOOLS2 = [
-    get_weekly_summary2
-]
+    logger.info("✅ Validation complete")
 
 
 def create_dashboard_agent() -> ChatAgent:
@@ -91,96 +86,104 @@ def create_dashboard_agent() -> ChatAgent:
 
     Uses environment variables for configuration:
         - AZURE_AI_PROJECT_ENDPOINT: Azure AI Foundry project endpoint
-        - AZURE_AI_MODEL_DEPLOYMENT_NAME: Model deployment name
+        - AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME: Model deployment name
     """
-    # # # # Create credential and project client
-    # # # credential = DefaultAzureCredential()
-    # # # project_client = AIProjectClient(
-    # # #     endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-    # # #     credential=credential,
-    # # # )
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Check required environment variables
+    required_env_vars = {
+        "AZURE_AI_PROJECT_ENDPOINT": os.environ.get("AZURE_AI_PROJECT_ENDPOINT"),
+        "AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME": os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"),
+    }
+
+    missing_vars = [k for k, v in required_env_vars.items() if not v]
+    if missing_vars:
+        error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
+        logger.error(f"❌ {error_msg}")
+        raise ValueError(error_msg)
+
+    try:
+        #Create the agent
+        logger.info("🔧 Creating dashboard agent...")
+        logger.info(f"   Project endpoint: {required_env_vars['AZURE_AI_PROJECT_ENDPOINT']}")
+        logger.info(f"   Model deployment: {required_env_vars['AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME']}")
+
+        credential = DefaultAzureCredential()
+        chat_client = AzureAIAgentClient(
+            project_endpoint=required_env_vars["AZURE_AI_PROJECT_ENDPOINT"],
+            model_deployment_name=required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=credential,
+            agent_name="FeedbackForgev2",
+            agent_description="Executive Dashboard Assistant for customer feedback analysis"
+        )
+        logger.info("✅ Chat client created successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to create chat client: {e}", exc_info=True)
+        raise
     
+    # agent = await check_agent("FeedbackForgev2", chat_client)
 
-    from openai import AzureOpenAI
-    
-    apim_resource_gateway_url="https://apim-4v5u3tvfuhuo4.azure-api.net/"
-    inference_api_path="inference"
-    api_key="0d5695acb9a14a0da0064a604181e667"
-    inference_api_version="2025-11-13"
+    # if agent is not None:
+    #     print(f"✅ Found existing agent: {agent.name} (ID: {agent.id})")
+    #     return agent
+    # else:
+    #     print("⚠️ Agent not found. Creating new agent...")
 
-    # may change in the future
-    # https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#rest-api-versioning
-    api_version = "2023-07-01-preview"
+    try:
+        # Validate tools before creating agent
+        validate_tools()
 
-    # gets the API Key from environment variable AZURE_OPENAI_API_KEY
-    # client = AzureOpenAI(
-    #     api_version=api_version,
-    #     # https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal#create-a-resource
-    #     azure_endpoint="https://example-endpoint.openai.azure.com",
+        logger.info("🤖 Creating ChatAgent with tools...")
+        logger.info(f"   Registering {len(TOOLS)} tools")
+        for tool in TOOLS:
+            tool_name = getattr(tool, '__name__', getattr(tool, 'name', str(tool)))
+            logger.info(f"      - {tool_name}")
+
+        agent = ChatAgent(
+            chat_client=chat_client,
+            instructions=AGENT_INSTRUCTIONS,
+            name="FeedbackForgev2",
+            # agent_id="asst_rRnXhIjLKeUjpGa0xZWIguxQ",
+            agent_id="FeedbackForgev2:1",
+            description="Executive Dashboard Assistant for customer feedback analysis",
+            tools=TOOLS
+        )
+        logger.info(f"✅ ChatAgent created successfully: {agent.name}")
+
+        # Wrap the agent's run method to catch errors
+        original_run = agent.run
+
+        async def wrapped_run(*args, **kwargs):
+            try:
+                logger.debug(f"🏃 Agent run called with args: {args[:50] if args else 'none'}...")
+                result = await original_run(*args, **kwargs)
+                logger.debug(f"✅ Agent run completed successfully")
+                return result
+            except Exception as e:
+                logger.error(f"❌ Error in agent.run(): {type(e).__name__}: {e}", exc_info=True)
+                raise
+
+        agent.run = wrapped_run
+
+        return agent
+    except Exception as e:
+        logger.error(f"❌ Failed to create ChatAgent: {e}", exc_info=True)
+        raise
+
+    #     agent = chat_client.agents_client.update_agent(
+    #     assistant_id=found_agent.id,
+    #     model=found_agent.model,
+    #     instructions=found_agent.instructions,
+    #     tools=TOOLS,
     # )
+    #print(f"✅ Created new agent: {agent.name}")
 
-    credential = AzureCliCredential()
-    # # # # chat_client = AzureOpenAIChatClient(credential=credential,
-    # # # #         endpoint=os.environ["AZURE_API_GATEWAY_ENDPOINT"],
-    # # # #         api_key=os.environ["AZURE_API_GATEWAY_KEY"],
-    # # # #         deployment_name=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"])
-    # # # #         # api_version=os.environ["AZURE_AI_MODEL_DEPLOYMENT_VERSION"])
-    
-    chat_client = AzureOpenAIChatClient(credential=credential,
-            endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-            api_key=os.environ["AZURE_OPENAI_KEY"],
-            deployment_name=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"])
-            # api_version=os.environ["AZURE_AI_MODEL_DEPLOYMENT_VERSION"])
-    
-    # chat_client = AzureOpenAIChatClient(credential=credential,
-    #         endpoint=f"{apim_resource_gateway_url}/{inference_api_path}",
-    #         api_key=api_key,
-    #         # api_version=inference_api_version
-    #         deployment_name=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"])
-    #         # api_version=os.environ["AZURE_AI_MODEL_DEPLOYMENT_VERSION"])
-    
-    # chat_client = AzureOpenAIChatClient(credential=credential)
-    
-    
-   
-
-    # # client2 = AzureOpenAI(
-    # #     azure_endpoint=f"{apim_resource_gateway_url}/{inference_api_path}",
-    # #     api_key=api_key,
-    # #     api_version=inference_api_version
-    # # )
-    # # response = client2.chat.completions.create(model="gpt-5.1-chat", messages=[
-    # #                 {"role": "system", "content": "You are a sarcastic, unhelpful assistant."},
-    # #                 {"role": "user", "content": "Can you tell me the time, please?"}
-    # # ])
-    # # print("💬 ",response.choices[0].message.content)
-    
-    
-    # # from openai import AzureOpenAI
-    # # from agents import Agent, Runner, set_default_openai_client, set_default_openai_api, set_tracing_disabled
-    # # # import nest_asyncio
-    # # # nest_asyncio.apply()
-
-    # # client = AzureOpenAI(azure_endpoint=f"{apim_resource_gateway_url}/{inference_api_path}",
-    # #                             api_key=api_key,
-    # #                             api_version=inference_api_version)
-    # # # set_default_openai_client(client)
-    # # # set_default_openai_api("chat_completions")
-    # # agent = Agent(name="Sarcastic Assistant", 
-    # #               instructions=AGENT_INSTRUCTIONS, 
-    # #               model="gpt-5.1-chat",
-    # #               tools=[get_weekly_summary2])
-
-    # # # result = Runner.run_sync(agent, "Can you tell me the time, please?")
-    # # # print("💬", result.final_output)
-    
-    
-    
-    #Create the agent
-    agent = chat_client.create_agent(
-             name="FeedbackForge",
-             description="Executive Dashboard Assistant for customer feedback analysis",
-             instructions=AGENT_INSTRUCTIONS,
-             tools=TOOLS) 
-
-    return agent
+# async def check_agent(agent_name: str, chat_client: AzureAIAgentClient) -> Optional[Agent]:
+#     found_agent = None
+#     all_agents_list = chat_client.agents_client.list_agents()
+#     async for a in all_agents_list:
+#         if a.name == agent_name:
+#             found_agent = a
+#             break
+#     return found_agent

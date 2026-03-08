@@ -17,11 +17,16 @@ services:
       - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
       - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
       - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      # Azure Redis Cache (managed)
+      - REDIS_URL=${REDIS_URL}
+      # Azure Service Principal for DefaultAzureCredential
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
     env_file:
       - .env
-    depends_on:
-      - redis
+    # depends_on:
+    #   - redis  # Disabled when using Azure Redis Cache
     networks:
       - feedbackforge
     restart: unless-stopped
@@ -65,22 +70,23 @@ services:
       - feedbackforge
     restart: unless-stopped
 
-  # Redis (for session management)
-  redis:
-    image: redis:7-alpine
-    container_name: feedbackforge-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - feedbackforge
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # Redis (for session management) - DISABLED: Using Azure Redis Cache
+  # Uncomment below to use local Redis instead of Azure Redis Cache
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: feedbackforge-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - feedbackforge
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
 networks:
   feedbackforge:
