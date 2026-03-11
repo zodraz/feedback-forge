@@ -15,6 +15,18 @@
             }
         },
         {
+            "name": "Python: Feedbackforge DevUI Workflow",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "feedbackforge",
+            "args": ["workflow"],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
             "name": "Python: AG-UI",
             "type": "debugpy",
             "request": "launch",

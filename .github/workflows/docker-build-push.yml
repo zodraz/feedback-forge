@@ -16,6 +16,8 @@ env:
   REGISTRY: ${{ secrets.ACR_REGISTRY }}
   # Image names
   BACKEND_IMAGE: feedbackforge-backend
+  CREATE_FAQS_IMAGE: feedbackforge-create-faqs
+  WORFLOW_IMAGE: feedbackforge-workflow
   DASHBOARD_IMAGE: feedbackforge-dashboard
   FAQS_IMAGE: feedbackforge-faqs
 
@@ -59,6 +61,32 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Extract metadata for Workflow
+        id: meta-workflow
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.WORKFLOW_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for create FAQS
+        id: meta-create-faqs
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.CREATE_FAQS_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Extract metadata for Dashboard
         id: meta-dashboard
         uses: docker/metadata-action@v5
@@ -94,6 +122,24 @@ jobs:
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
 
+      - name: Build and push Workflow image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./feedbackforge/WorkflowDockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-workflow.outputs.tags }}
+          labels: ${{ steps.meta-workflow.outputs.labels }}
+
+      - name: Build and push Create FAQS image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./feedbackforge/CreateFAQsDockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-create-faqs.outputs.tags }}
+          labels: ${{ steps.meta-create-faqs.outputs.labels }}
+
       - name: Build and push Dashboard image
         uses: docker/build-push-action@v5
         with:
@@ -119,6 +165,16 @@ jobs:
           echo "### Backend" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta-backend.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Workflow" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta-workflow.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Create FAQs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta-create-faqs.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Dashboard" >> $GITHUB_STEP_SUMMARY
