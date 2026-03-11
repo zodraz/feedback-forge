@@ -126,7 +126,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./feedbackforge/WorkflowDockerfile
+          file: ./feedbackforge/Workflow.Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-workflow.outputs.tags }}
           labels: ${{ steps.meta-workflow.outputs.labels }}
@@ -135,7 +135,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./feedbackforge/CreateFAQsDockerfile
+          file: ./feedbackforge/CreateFAQs.Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-create-faqs.outputs.tags }}
           labels: ${{ steps.meta-create-faqs.outputs.labels }}
