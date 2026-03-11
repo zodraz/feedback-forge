@@ -17,7 +17,7 @@ env:
   # Image names
   BACKEND_IMAGE: feedbackforge-backend
   CREATE_FAQS_IMAGE: feedbackforge-create-faqs
-  WORFLOW_IMAGE: feedbackforge-workflow
+  WORKFLOW_IMAGE: feedbackforge-workflow
   DASHBOARD_IMAGE: feedbackforge-dashboard
   FAQS_IMAGE: feedbackforge-faqs
 
