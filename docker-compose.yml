@@ -36,77 +36,77 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-  # Backend API
-  workflow:
-    build:
-      context: .
-      dockerfile: feedbackforge/WorkflowDockerfile
-    container_name: feedbackforge-workflow
-    ports:
-      - "8082:8082"
-    environment:
-      # Load from .env file
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
-      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
-      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
-      - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
-      # Azure Redis Cache (managed)
-      - REDIS_URL=${REDIS_URL}
-      # Azure Service Principal for DefaultAzureCredential
-      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-    env_file:
-      - .env
-    # depends_on:
-    #   - redis  # Disabled when using Azure Redis Cache
-    networks:
-      - feedbackforge
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # Workflow
+  # workflow:
+  #   build:
+  #     context: .
+  #     dockerfile: feedbackforge/Workflow.Dockerfile
+  #   container_name: feedbackforge-workflow
+  #   ports:
+  #     - "8082:8082"
+  #   environment:
+  #     # Load from .env file
+  #     - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+  #     - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+  #     - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+  #     - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+  #     - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+  #     - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
+  #     # Azure Redis Cache (managed)
+  #     - REDIS_URL=${REDIS_URL}
+  #     # Azure Service Principal for DefaultAzureCredential
+  #     - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+  #     - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+  #     - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+  #   env_file:
+  #     - .env
+  #   # depends_on:
+  #   #   - redis  # Disabled when using Azure Redis Cache
+  #   networks:
+  #     - feedbackforge
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
-  # Backend API
-  cresate-faqs:
-    build:
-      context: .
-      dockerfile: feedbackforge/CreateFAQsDockerfile
-    container_name: feedbackforge-create-faqs
-    ports:
-      - "8083:8083"
-    environment:
-      # Load from .env file
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
-      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
-      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
-      - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
-      # Azure Redis Cache (managed)
-      - REDIS_URL=${REDIS_URL}
-      # Azure Service Principal for DefaultAzureCredential
-      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-    env_file:
-      - .env
-    # depends_on:
-    #   - redis  # Disabled when using Azure Redis Cache
-    networks:
-      - feedbackforge
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # Create FAQS
+  # create-faqs:
+  #   build:
+  #     context: .
+  #     dockerfile: feedbackforge/CreateFAQs.Dockerfile
+  #   container_name: feedbackforge-create-faqs
+  #   ports:
+  #     - "8083:8083"
+  #   environment:
+  #     # Load from .env file
+  #     - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+  #     - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+  #     - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+  #     - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+  #     - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+  #     - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
+  #     # Azure Redis Cache (managed)
+  #     - REDIS_URL=${REDIS_URL}
+  #     # Azure Service Principal for DefaultAzureCredential
+  #     - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+  #     - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+  #     - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+  #   env_file:
+  #     - .env
+  #   # depends_on:
+  #   #   - redis  # Disabled when using Azure Redis Cache
+  #   networks:
+  #     - feedbackforge
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
   # Dashboard (Executive chat interface)
   dashboard:

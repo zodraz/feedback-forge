@@ -57,10 +57,12 @@ async def run_workflow_mode(max_surveys: int = 200):
     if results.get("final_report"):
         logger.info(json.dumps(results["final_report"], indent=2))
 
-    output_file = f"survey_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(output_file, 'w') as f:
-        json.dump(results, f, indent=2)
-    logger.info(f"\n✅ Saved to: {output_file}")
+    # output_file = f"survey_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    # with open(output_file, 'w') as f:
+    #     json.dump(results, f, indent=2)
+    # logger.info(f"\n✅ Saved to: {output_file}")
+    
+    json.dumps(results, indent=2)
 
     return results
 
