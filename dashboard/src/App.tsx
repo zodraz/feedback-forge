@@ -12,8 +12,8 @@ interface Message {
 // const AG_UI_URL = import.meta.env.VITE_AG_UI_URL || "http://localhost:8081/agent";
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/api";
 
-const AG_UI_URL ="http://feedbackforge-backend/agent"
-const API_BASE_URL ="http://feedbackforge-backend/api"
+const AG_UI_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/agent"
+const API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
 
 function App() {
   return (
