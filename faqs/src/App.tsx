@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import './App.css'
 
 // Load API URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api'
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api'
+const API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
 
 interface FaqItem {
   question: string
@@ -39,7 +40,6 @@ function App() {
     setError(null)
 
     try {
-      const API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
       const response = await fetch(`${API_BASE_URL}/faqs?limit=10`)
 
       if (!response.ok) {
