@@ -821,6 +821,7 @@ class InMemoryFeedbackStore:
                 key=lambda x: x.get('generated_at', ''),
                 reverse=True
             )
+            logger.info(f"Retrieved {len(sorted_faqs)} FAQs from in-memory storage")
 
             # Limit results
             return sorted_faqs[:limit] if limit else sorted_faqs
