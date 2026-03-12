@@ -39,7 +39,7 @@ function App() {
     setError(null)
 
     try {
-      const API_BASE_URL ="https://feedbackforge-dashboard.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
+      const API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
       const response = await fetch(`${API_BASE_URL}/faqs?limit=10`)
 
       if (!response.ok) {
