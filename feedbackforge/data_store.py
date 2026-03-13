@@ -49,6 +49,8 @@ class CosmosDBFeedbackStore:
         # Initialize client with key or DefaultAzureCredential
         if key:
             logger.info("🔑 Using primary key authentication for Cosmos DB")
+            # Strip any whitespace from the key (common issue with .env files)
+            key = key.strip()
             self.client = CosmosClient(endpoint, credential=key)
         else:
             logger.info("🔐 Using DefaultAzureCredential for Cosmos DB")
@@ -866,7 +868,15 @@ def create_feedback_store():
             logger.info("✅ Using Cosmos DB for feedback storage")
             return store
         except Exception as e:
-            logger.warning(f"⚠️ Failed to initialize Cosmos DB: {e}. Falling back to in-memory.")
+            logger.error(f"⚠️ Failed to initialize Cosmos DB: {type(e).__name__}: {e}")
+            logger.error(f"   Endpoint: {cosmos_endpoint}")
+            logger.error(f"   Auth method: {auth_method}")
+            if "padding" in str(e).lower():
+                logger.error("   💡 Hint: The COSMOS_DB_KEY may have invalid characters or whitespace.")
+                logger.error("   Try: 1) Copy the key again from Azure Portal")
+                logger.error("        2) Ensure no extra spaces in .env file")
+                logger.error("        3) Or use COSMOS_DB_AUTH_METHOD=default_credential with 'az login'")
+            logger.warning("   Falling back to in-memory storage (data will not persist across restarts)")
             return InMemoryFeedbackStore()
     else:
         logger.info("ℹ️ COSMOS_DB_ENDPOINT not set. Using in-memory feedback storage.")
