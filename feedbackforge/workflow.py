@@ -36,6 +36,7 @@ class SurveyAnalysisWorkflow:
     def __init__(self):
         self.credential = DefaultAzureCredential()
         self.workflow = None
+        self.executors = []  # Track executors for cleanup
         self._setup_workflow()
 
     def _setup_workflow(self):
@@ -51,6 +52,12 @@ class SurveyAnalysisWorkflow:
         actions = ActionGenerator(self.credential)
         reporter = ReportGenerator(self.credential)
         orchestrator_final = FinalOrchestrator(self.credential)
+
+        # Track all executors for cleanup
+        self.executors = [
+            orchestrator_init, preprocessor, sentiment, topics, anomaly,
+            competitive, insights, priorities, actions, reporter, orchestrator_final
+        ]
 
         builder = WorkflowBuilder()
 
@@ -77,6 +84,24 @@ class SurveyAnalysisWorkflow:
 
         self.workflow = builder.build()
 
+    async def cleanup(self):
+        """Close all HTTP sessions and cleanup resources."""
+        try:
+            # Close the credential's HTTP session
+            if hasattr(self.credential, 'close'):
+                await self.credential.close()
+                logger.debug("✅ Credential sessions closed")
+
+            # Close any client sessions in executors
+            for executor in self.executors:
+                if hasattr(executor, 'agent') and hasattr(executor.agent, 'chat_client'):
+                    client = executor.agent.chat_client
+                    if hasattr(client, 'close'):
+                        await client.close()
+                        logger.debug(f"✅ Closed session for {executor.id}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error during cleanup: {e}")
+
     async def analyze(self, surveys: List[SurveyResponse]) -> Dict[str, Any]:
         """Run the complete analysis workflow."""
         logger.info(f"\n{'='*60}\n🚀 Starting Multi-Agent Analysis\n📊 Analyzing {len(surveys)} responses\n{'='*60}")
@@ -84,10 +109,14 @@ class SurveyAnalysisWorkflow:
         if self.workflow is None:
             return {"error": "Workflow not initialized"}
 
-        final_result = None
-        async for event in self.workflow.run_stream(AnalysisState(surveys=surveys)):
-            if isinstance(event, WorkflowOutputEvent):
-                final_result = event.data
-                logger.info(f"\n{'='*60}\n✨ Analysis Complete!\n{'='*60}\n")
+        try:
+            final_result = None
+            async for event in self.workflow.run_stream(AnalysisState(surveys=surveys)):
+                if isinstance(event, WorkflowOutputEvent):
+                    final_result = event.data
+                    logger.info(f"\n{'='*60}\n✨ Analysis Complete!\n{'='*60}\n")
 
-        return final_result if final_result else {"error": "Workflow failed"}
+            return final_result if final_result else {"error": "Workflow failed"}
+        finally:
+            # Always cleanup, even if workflow fails
+            await self.cleanup()
