@@ -167,7 +167,7 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
         if telemetry_enabled:
             custom_metrics = create_custom_metrics()
             logger.info("✅ Custom metrics initialized")
-
+        logger.info("Version 6 of Server")
         # Create the dashboard agent and register AG-UI endpoint at /agent
         dashboard_agent = create_dashboard_agent()
         add_agent_framework_fastapi_endpoint(app, dashboard_agent, "/agent")
