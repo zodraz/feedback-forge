@@ -34,6 +34,22 @@ from .data_store import feedback_store
 from .sessions import SessionManager, InMemorySessionManager
 from .telemetry import setup_telemetry, instrument_app, create_custom_metrics
 
+# Configure logging for server module
+# This is needed because uvicorn factory mode imports this module in a worker process
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()],
+    force=True  # Override any existing configuration
+)
+
+# Set appropriate log levels
+logging.getLogger('agent_framework').setLevel(logging.DEBUG)
+logging.getLogger('agent_framework.azure').setLevel(logging.DEBUG)
+logging.getLogger('azure').setLevel(logging.WARNING)
+logging.getLogger('uvicorn').setLevel(logging.INFO)
+logging.getLogger('fastapi').setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 # Custom metrics (initialized after telemetry setup)
