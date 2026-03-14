@@ -12,6 +12,8 @@ from azure.identity.aio import DefaultAzureCredential
 from agent_framework.azure import AzureAIAgentClient
 import json
 from .data_store import feedback_store
+from agent_framework.microsoft import PurviewPolicyMiddleware, PurviewSettings
+from azure.identity import AzureCliCredential, InteractiveBrowserCredential
 
 from .chat_tools import (
     get_weekly_summary,
@@ -109,13 +111,21 @@ def create_dashboard_agent() -> ChatAgent:
         logger.info(f"   Project endpoint: {required_env_vars['AZURE_AI_PROJECT_ENDPOINT']}")
         logger.info(f"   Model deployment: {required_env_vars['AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME']}")
 
+        purview_middleware = PurviewPolicyMiddleware(
+            credential=InteractiveBrowserCredential(
+                client_id="required_env_vars['AZURE_CLIENT_ID']",
+            ),
+            settings=PurviewSettings(app_name="FeedbackForge")
+        )
+        
         credential = DefaultAzureCredential()
         chat_client = AzureAIAgentClient(
             project_endpoint=required_env_vars["AZURE_AI_PROJECT_ENDPOINT"],
             model_deployment_name=required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
             credential=credential,
-            agent_name="FeedbackForgev2",
-            agent_description="Executive Dashboard Assistant for customer feedback analysis"
+            agent_name="FeedbackForge",
+            agent_description="Executive Dashboard Assistant for customer feedback analysis",
+            middleware=[purview_middleware]
         )
         logger.info("✅ Chat client created successfully")
     except Exception as e:
@@ -143,9 +153,8 @@ def create_dashboard_agent() -> ChatAgent:
         agent = ChatAgent(
             chat_client=chat_client,
             instructions=AGENT_INSTRUCTIONS,
-            name="FeedbackForgev2",
-            # agent_id="asst_rRnXhIjLKeUjpGa0xZWIguxQ",
-            agent_id="FeedbackForgev2:1",
+            name="FeedbackForge",
+            agent_id="FeedbackForge:1",
             description="Executive Dashboard Assistant for customer feedback analysis",
             tools=TOOLS
         )

@@ -3,7 +3,16 @@ import './App.css'
 
 // Load API URL from environment variables
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api'
-const API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
+const 
+
+if (import.meta.env.PROD) {
+  // code inside here will be tree-shaken in production builds
+  console.log('Production mode')
+  var API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
+} else {
+  console.log('Development mode')
+  var API_BASE_URL ="http://localhost:8081/api"
+}
 
 interface FaqItem {
   question: string
