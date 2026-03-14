@@ -1,0 +1,13 @@
+# Evaluation results
+results/*.json
+results/*.jsonl
+reports/*.html
+reports/*.pdf
+
+# Cache
+__pycache__/
+*.pyc
+
+# Temporary files
+*.tmp
+.DS_Store

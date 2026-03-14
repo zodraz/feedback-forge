@@ -51,6 +51,10 @@ dev = [
     "pyright>=1.1.0",
     "ruff>=0.4.0",
 ]
+eval = [
+    "azure-ai-evaluation>=1.0.0",
+    "pandas>=2.0.0",
+]
 
 [project.scripts]
 feedbackforge = "feedbackforge.__main__:main"
