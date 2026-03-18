@@ -812,8 +812,9 @@ def create_sse_app():
         """
         await sse.handle_post_message(scope, receive, send)
 
-    async def health_check(_request):
+    async def health_check(request):
         """Health check endpoint."""
+        _ = request  # Required by Starlette Route signature
         return JSONResponse({
             "status": "healthy",
             "server": "feedbackforge-mcp",
