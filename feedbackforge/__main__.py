@@ -133,6 +133,42 @@ def run_serve_mode(host: str = "0.0.0.0", port: int = 8081, reload: bool = False
     run_server(host=host, port=port, reload=reload)
 
 
+def run_mcp_mode(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8082):
+    """Launch the MCP server for external feedback integration."""
+    from feedbackforge.mcp_server import run_sse_server, main
+
+    logger.info("=" * 60)
+    logger.info("  FeedbackForge - MCP Server Mode")
+    logger.info("=" * 60)
+
+    if transport == "sse":
+        logger.info(f"\nStarting MCP server with SSE transport at http://{host}:{port}")
+        logger.info("\nEndpoints:")
+        logger.info(f"  - SSE:    http://{host}:{port}/sse")
+        logger.info(f"  - POST:   http://{host}:{port}/messages")
+        logger.info(f"  - Health: http://{host}:{port}/health")
+    else:
+        logger.info("\nStarting MCP server with stdio transport...")
+        logger.info("(for Claude Desktop / VS Code integration)")
+
+    logger.info("\nAvailable tools:")
+    logger.info("  - fetch_zendesk_tickets")
+    logger.info("  - ingest_feedback_to_store")
+    logger.info("  - analyze_sentiment_batch")
+    logger.info("  - create_zendesk_ticket")
+    logger.info("\nResources:")
+    logger.info("  - feedbackforge://feedback/recent")
+    logger.info("  - feedbackforge://feedback/urgent")
+    logger.info("  - feedbackforge://analytics/summary")
+    logger.info("=" * 60)
+
+    # Run the MCP server (blocks until stopped)
+    if transport == "sse":
+        run_sse_server(host=host, port=port)
+    else:
+        asyncio.run(main())
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="FeedbackForge: Multi-Agent Feedback Analyzer",
@@ -148,6 +184,7 @@ Examples:
   python -m feedbackforge workflow --devui  # Run workflow then launch DevUI
   python -m feedbackforge faq          # Generate FAQs using RAG
   python -m feedbackforge faq --days 7 --max-faqs 20
+  python -m feedbackforge mcp          # Run MCP server for external integrations
         """
     )
     subparsers = parser.add_subparsers(dest="mode", help="Operating mode")
@@ -172,6 +209,15 @@ Examples:
     faq_parser = subparsers.add_parser("faq", help="Generate FAQs from customer feedback using RAG")
     FAQCommand.setup_parser(faq_parser)
 
+    # MCP mode (Model Context Protocol server)
+    mcp_parser = subparsers.add_parser("mcp", help="Run MCP server for external feedback integration")
+    mcp_parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio",
+                           help="Transport protocol (default: stdio)")
+    mcp_parser.add_argument("--host", type=str, default="127.0.0.1",
+                           help="Host for SSE transport (default: 127.0.0.1)")
+    mcp_parser.add_argument("--port", type=int, default=8082,
+                           help="Port for SSE transport (default: 8082)")
+
     args = parser.parse_args()
 
     if args.mode == "workflow":
@@ -180,6 +226,8 @@ Examples:
         run_serve_mode(host=args.host, port=args.port, reload=args.reload)
     elif args.mode == "faq":
         sys.exit(FAQCommand().execute(args))
+    elif args.mode == "mcp":
+        run_mcp_mode(transport=args.transport, host=args.host, port=args.port)
     else:
         # Default to chat mode
         port = getattr(args, "port", 8090)

@@ -351,6 +351,106 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
             logger.error(f"Failed to retrieve FAQ {faq_id}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to retrieve FAQ: {str(e)}")
 
+    # Zendesk sync endpoints
+    @app.post("/api/sync/zendesk/fetch")
+    async def fetch_zendesk_tickets(
+        status: str = "all",
+        priority: str = "all",
+        days: int = 30,
+        limit: int = 100
+    ):
+        """
+        Fetch tickets from Zendesk.
+
+        Args:
+            status: Ticket status filter (new, open, pending, solved, all)
+            priority: Priority filter (low, normal, high, urgent, all)
+            days: Fetch tickets from the last N days
+            limit: Maximum number of tickets to fetch
+
+        Returns:
+            Fetched tickets in FeedbackItem format
+        """
+        try:
+            import json as json_module
+            from .mcp_server import fetch_zendesk_tickets as mcp_fetch
+
+            args = {
+                "status": status,
+                "priority": priority,
+                "days": days,
+                "limit": limit
+            }
+
+            result = await mcp_fetch(args)
+            data = json_module.loads(result[0].text)
+            return JSONResponse(content=data)
+
+        except Exception as e:
+            logger.error(f"Failed to fetch Zendesk tickets: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to fetch tickets: {str(e)}")
+
+    @app.post("/api/sync/zendesk/ingest")
+    async def ingest_zendesk_feedback(request: Request):
+        """
+        Ingest fetched feedback items into the data store.
+
+        Request body:
+            {
+                "feedback_items": [...],
+                "source": "zendesk"
+            }
+
+        Returns:
+            Ingestion statistics
+        """
+        try:
+            import json as json_module
+            from .mcp_server import ingest_feedback_to_store as mcp_ingest
+
+            body = await request.json()
+            result = await mcp_ingest(body)
+            data = json_module.loads(result[0].text)
+            return JSONResponse(content=data)
+
+        except Exception as e:
+            logger.error(f"Failed to ingest feedback: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to ingest feedback: {str(e)}")
+
+    @app.post("/api/sync/zendesk/run")
+    async def run_zendesk_sync(
+        status: str = "all",
+        priority: str = "all",
+        days: int = 30,
+        limit: int = 100
+    ):
+        """
+        Run complete Zendesk sync workflow (fetch + ingest).
+
+        This is a convenience endpoint that combines fetch and ingest operations.
+
+        Args:
+            status: Ticket status filter
+            priority: Priority filter
+            days: Fetch tickets from the last N days
+            limit: Maximum number of tickets to fetch
+
+        Returns:
+            Complete sync statistics
+        """
+        try:
+            from .data_sync_agent import sync_zendesk_data
+
+            # Override default parameters if provided
+            # Note: This calls the autonomous sync which uses hardcoded params,
+            # so this just triggers the sync with default params for now
+            result = await sync_zendesk_data()
+            return JSONResponse(content=result)
+
+        except Exception as e:
+            logger.error(f"Failed to run Zendesk sync: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to run sync: {str(e)}")
+
     return app
 
 
@@ -375,6 +475,7 @@ def run_server(host: str = "0.0.0.0", port: int = 8081, reload: bool = False):
     logger.info(f"  - Health Check:   http://{host}:{port}/health")
     logger.info(f"  - Service Info:   http://{host}:{port}/info")
     logger.info(f"  - FAQ API:        http://{host}:{port}/api/faqs")
+    logger.info(f"  - Zendesk Sync:   http://{host}:{port}/api/sync/zendesk/run (POST)")
     logger.info(f"  - API Docs:       http://{host}:{port}/docs")
     logger.info("\n💡 Open http://{host}:{port}/ in your browser for API information")
     logger.info("   Connect CopilotKit to http://{host}:{port}/agent")

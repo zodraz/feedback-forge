@@ -1,41 +1,79 @@
 version: '3.8'
 
 services:
-  # Backend API
-  backend:
+  # # # # Backend API
+  # # # backend:
+  # # #   build:
+  # # #     context: .
+  # # #     dockerfile: feedbackforge/Dockerfile
+  # # #   container_name: feedbackforge-backend
+  # # #   ports:
+  # # #     - "8081:8081"
+  # # #   environment:
+  # # #     # Load from .env file
+  # # #     - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+  # # #     - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+  # # #     - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+  # # #     - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+  # # #     - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+  # # #     - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
+  # # #     # Azure Redis Cache (managed)
+  # # #     - REDIS_URL=${REDIS_URL}
+  # # #     # Azure Service Principal for DefaultAzureCredential
+  # # #     - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+  # # #     - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+  # # #     - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+  # # #     # MCP Server URL for data sync agent
+  # # #     - FEEDBACKFORGE_MCP_URL=http://mcp-server:8082
+  # # #     - FEEDBACKFORGE_USE_MCP=true
+  # # #     # Note: Zendesk credentials NOT needed here - MCP server handles all Zendesk communication
+  # # #   env_file:
+  # # #     - .env
+  # # #   depends_on:
+  # # #     - mcp-server
+  # # #   networks:
+  # # #     - feedbackforge
+  # # #   restart: unless-stopped
+  # # #   healthcheck:
+  # # #     test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+  # # #     interval: 30s
+  # # #     timeout: 10s
+  # # #     retries: 3
+  # # #     start_period: 40s
+
+  # MCP Server (Model Context Protocol - for Zendesk integration)
+  mcp-server:
     build:
       context: .
       dockerfile: feedbackforge/Dockerfile
-    container_name: feedbackforge-backend
+    container_name: feedbackforge-mcp
     ports:
-      - "8081:8081"
+      - "8082:8082"
+    command: ["python", "-m", "feedbackforge", "mcp", "--transport", "sse", "--host", "0.0.0.0", "--port", "8082"]
     environment:
-      # Load from .env file
+      # Zendesk credentials
+      - ZENDESK_SUBDOMAIN=${ZENDESK_SUBDOMAIN}
+      - ZENDESK_EMAIL=${ZENDESK_EMAIL}
+      - ZENDESK_API_TOKEN=${ZENDESK_API_TOKEN}
+      # Cosmos DB for data store
       - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
       - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
-      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
-      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
-      - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
-      # Azure Redis Cache (managed)
-      - REDIS_URL=${REDIS_URL}
-      # Azure Service Principal for DefaultAzureCredential
+      # Azure credentials
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
       - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
     env_file:
       - .env
-    # depends_on:
-    #   - redis  # Disabled when using Azure Redis Cache
     networks:
       - feedbackforge
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 20s
+
   # Workflow
   # workflow:
   #   build:
@@ -109,37 +147,37 @@ services:
   #     start_period: 40s
 
   # Dashboard (Executive chat interface)
-  dashboard:
-    build:
-      context: ./dashboard
-      dockerfile: Dockerfile
-    container_name: feedbackforge-dashboard
-    ports:
-      - "3000:3000"
-    environment:
-      - VITE_API_BASE_URL=http://backend:8081/api
-      - VITE_AG_UI_URL=http://backend:8081/agent
-    depends_on:
-      - backend
-    networks:
-      - feedbackforge
-    restart: unless-stopped
+  # dashboard:
+  #   build:
+  #     context: ./dashboard
+  #     dockerfile: Dockerfile
+  #   container_name: feedbackforge-dashboard
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - VITE_API_BASE_URL=http://backend:8081/api
+  #     - VITE_AG_UI_URL=http://backend:8081/agent
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - feedbackforge
+  #   restart: unless-stopped
 
   # FAQ Viewer
-  faqs:
-    build:
-      context: ./faqs
-      dockerfile: Dockerfile
-    container_name: feedbackforge-faqs
-    ports:
-      - "3002:3002"
-    environment:
-      - VITE_API_BASE_URL=http://backend:8081/api
-    depends_on:
-      - backend
-    networks:
-      - feedbackforge
-    restart: unless-stopped
+  # faqs:
+  #   build:
+  #     context: ./faqs
+  #     dockerfile: Dockerfile
+  #   container_name: feedbackforge-faqs
+  #   ports:
+  #     - "3002:3002"
+  #   environment:
+  #     - VITE_API_BASE_URL=http://backend:8081/api
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - feedbackforge
+  #   restart: unless-stopped
 
   # Redis (for session management) - DISABLED: Using Azure Redis Cache
   # Uncomment below to use local Redis instead of Azure Redis Cache

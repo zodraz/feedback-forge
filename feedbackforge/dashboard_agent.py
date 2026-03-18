@@ -5,15 +5,15 @@ FeedbackForge Chat Agent
 ChatAgent creation for the executive dashboard assistant.
 """
 
+import asyncio
 import os
 
 from agent_framework import ChatAgent
 from azure.identity.aio import DefaultAzureCredential
 from agent_framework.azure import AzureAIAgentClient
-import json
 from .data_store import feedback_store
 from agent_framework.microsoft import PurviewPolicyMiddleware, PurviewSettings
-from azure.identity import AzureCliCredential, InteractiveBrowserCredential
+from azure.identity import InteractiveBrowserCredential
 
 from .chat_tools import (
     get_weekly_summary,
@@ -141,6 +141,17 @@ def create_dashboard_agent() -> ChatAgent:
     #     print("⚠️ Agent not found. Creating new agent...")
 
     try:
+        # Run autonomous data sync agent before creating dashboard
+        from .data_sync_agent import run_sync_before_dashboard
+
+        sync_result = asyncio.run(run_sync_before_dashboard())
+        if sync_result.get("success"):
+            ingested = sync_result.get("ingested_count", 0)
+            skipped = sync_result.get("skipped_count", 0)
+            logger.info(f"✅ Data sync complete: {ingested} new tickets, {skipped} duplicates")
+        else:
+            logger.warning(f"⚠️  Data sync incomplete: {sync_result.get('reason', 'unknown')}")
+
         # Validate tools before creating agent
         validate_tools()
 

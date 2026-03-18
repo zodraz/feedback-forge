@@ -20,6 +20,7 @@ env:
   WORKFLOW_IMAGE: feedbackforge-workflow
   DASHBOARD_IMAGE: feedbackforge-dashboard
   FAQS_IMAGE: feedbackforge-faqs
+  MCP_IMAGE: feedbackforge-mcp
 
 jobs:
   build-and-push:
@@ -53,6 +54,19 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for MCP
+        id: meta-mcp
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.MCP_IMAGE }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -121,6 +135,15 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
+      
+      - name: Build and push MCP image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./feedbackforge/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-mcp.outputs.tags }}
+          labels: ${{ steps.meta-mcp.outputs.labels }}
 
       - name: Build and push Workflow image
         uses: docker/build-push-action@v5

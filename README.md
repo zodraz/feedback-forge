@@ -13,11 +13,12 @@ FeedbackForge is an AI-powered feedback analysis system that uses multiple speci
 - **Real-time Anomaly Detection**: Automatically detect unusual patterns and spikes
 - **Competitive Intelligence**: Extract competitor mentions and churn risk analysis
 - **RAG-Powered FAQ Generator**: Automatically generate FAQs from customer feedback using semantic search
-- **Four Operating Modes**: Development, Production, Batch processing, and FAQ Generation
+- **MCP Server Integration**: Connect to external feedback sources (GitHub, Zendesk, Intercom) using Model Context Protocol
+- **Five Operating Modes**: Development, Production, Batch processing, FAQ Generation, and MCP Server
 
 ## Architecture
 
-### Four Operating Modes
+### Five Operating Modes
 
 #### 1. Chat Mode (DevUI) - Development Interface
 - Interactive chat with the executive dashboard assistant
@@ -41,6 +42,13 @@ FeedbackForge is an AI-powered feedback analysis system that uses multiple speci
 - Uses hybrid search (keyword + vector + semantic) for intelligent theme clustering
 - Best for: Creating customer-facing documentation, support knowledge bases
 - Command: `python -m feedbackforge faq`
+
+#### 5. MCP Server Mode - External Feedback Integration
+- Model Context Protocol server for fetching real feedback from external sources
+- Integrates with GitHub Issues, Zendesk Tickets, Intercom Conversations
+- Best for: Replacing mock data with production feedback, CI/CD integration
+- Command: `python -m feedbackforge mcp`
+- See: [MCP_INTEGRATION.md](MCP_INTEGRATION.md) for detailed setup
 
 ### Multi-Agent Workflow Pipeline
 
@@ -351,9 +359,11 @@ cd faqs && npm run dev
    - API rate limits not considered
    - Should add retry logic and circuit breakers
 
-8. **Mock Data Only**: No real data ingestion mechanism
-   - No API endpoints to submit feedback
-   - No integration with survey platforms
+8. **Mock Data Only** ✅ SOLVED: MCP server integration available
+   - ✅ MCP server provides integration with GitHub, Zendesk, Intercom
+   - ✅ Fetch real feedback from external sources
+   - ⚠️ Direct API endpoints to submit feedback (still needed)
+   - See [MCP_INTEGRATION.md](MCP_INTEGRATION.md) for setup
 
 ## Improvement Roadmap
 

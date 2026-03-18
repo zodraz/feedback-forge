@@ -513,6 +513,28 @@ class CosmosDBFeedbackStore:
             logger.error(f"Failed to set alert: {e}")
             return {"error": str(e)}
 
+    def ingest_feedback_item(self, feedback: FeedbackItem) -> bool:
+        """
+        Ingest a feedback item with idempotency check.
+        Returns True if ingested, False if already exists.
+        """
+        try:
+            # Check if item already exists
+            query = f"SELECT c.id FROM c WHERE c.id = '{feedback.id}'"
+            existing = list(self.container.query_items(query=query, enable_cross_partition_query=True))
+
+            if existing:
+                logger.debug(f"Feedback item {feedback.id} already exists, skipping")
+                return False
+
+            # Insert new item
+            self._upsert_feedback(feedback)
+            logger.debug(f"Ingested new feedback item {feedback.id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to ingest feedback {feedback.id}: {e}")
+            return False
+
     @trace_operation("cosmos.get_surveys")
     def get_surveys(self) -> List[SurveyResponse]:
         """Convert feedback items to SurveyResponse for workflow mode."""
@@ -756,6 +778,21 @@ class InMemoryFeedbackStore:
         alert = {"id": f"ALERT{len(self.alerts) + 1:03d}", "condition": condition, "threshold": threshold, "status": "active"}
         self.alerts_list.append(alert)
         return alert
+
+    def ingest_feedback_item(self, feedback: FeedbackItem) -> bool:
+        """
+        Ingest a feedback item with idempotency check.
+        Returns True if ingested, False if already exists.
+        """
+        # Check if item already exists
+        if any(f.id == feedback.id for f in self.feedback_list):
+            logger.debug(f"Feedback item {feedback.id} already exists, skipping")
+            return False
+
+        # Add new item
+        self.feedback_list.append(feedback)
+        logger.debug(f"Ingested new feedback item {feedback.id}")
+        return True
 
     def get_surveys(self) -> List[SurveyResponse]:
         """Convert feedback items to SurveyResponse for workflow mode."""
