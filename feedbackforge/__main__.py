@@ -44,27 +44,66 @@ logging.getLogger('azure').setLevel(logging.WARNING)  # Azure SDK is too verbose
 logger = logging.getLogger(__name__)
 
 
-async def run_workflow_mode(max_surveys: int = 200):
-    """Run the full multi-agent workflow analysis using shared data store."""
+async def run_workflow_in_background(max_surveys: int):
+    """Background task to run workflow analysis."""
     surveys = feedback_store.get_surveys()[:max_surveys]
 
-    logger.info(f"\n📊 Using {len(surveys)} surveys from shared data store")
+    logger.info(f"\n📊 Starting workflow with {len(surveys)} surveys from shared data store")
 
     workflow = SurveyAnalysisWorkflow()
     results = await workflow.analyze(surveys)
 
-    logger.info("\n" + "=" * 60 + "\n📊 RESULTS\n" + "=" * 60)
+    logger.info("\n" + "=" * 60 + "\n📊 WORKFLOW COMPLETE\n" + "=" * 60)
     if results.get("final_report"):
         logger.info(json.dumps(results["final_report"], indent=2))
 
-    # output_file = f"survey_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    # with open(output_file, 'w') as f:
-    #     json.dump(results, f, indent=2)
-    # logger.info(f"\n✅ Saved to: {output_file}")
-    
-    json.dumps(results, indent=2)
+    logger.info("\n✅ Workflow results are now available in DevUI")
 
     return results
+
+
+async def run_workflow_mode(max_surveys: int = 200, devui: bool = False, port: int = 8090):
+    """Run the full multi-agent workflow analysis using shared data store."""
+
+    # Launch DevUI first if requested
+    if devui:
+        logger.info("\n" + "=" * 60)
+        logger.info("  Launching DevUI - workflow will run in background...")
+        logger.info("=" * 60)
+        logger.info(f"\n🌐 DevUI starting at http://localhost:{port}")
+        logger.info(f"\n   👉 Open your browser to: http://localhost:{port}")
+        logger.info("\nTry these queries:")
+        logger.info("  - 'What's the status of the workflow?'")
+        logger.info("  - 'Show me this week's feedback summary'")
+        logger.info("  - 'Summarize the workflow analysis results' (after completion)")
+        logger.info("  - 'What were the key themes identified?'")
+        logger.info("=" * 60)
+
+        from agent_framework.devui import serve
+
+        # Create agent and start workflow in background
+        agent = create_dashboard_agent()
+
+        # Start workflow as background task
+        asyncio.create_task(run_workflow_in_background(max_surveys))
+
+        # Launch DevUI (this blocks)
+        # Note: auto_open may not work in WSL2 or when debugging
+        serve(entities=[agent], port=port, auto_open=True)
+    else:
+        # Run workflow without DevUI
+        surveys = feedback_store.get_surveys()[:max_surveys]
+
+        logger.info(f"\n📊 Using {len(surveys)} surveys from shared data store")
+
+        workflow = SurveyAnalysisWorkflow()
+        results = await workflow.analyze(surveys)
+
+        logger.info("\n" + "=" * 60 + "\n📊 RESULTS\n" + "=" * 60)
+        if results.get("final_report"):
+            logger.info(json.dumps(results["final_report"], indent=2))
+
+        return results
 
 
 def run_chat_mode(port: int = 8090):
@@ -105,6 +144,8 @@ Examples:
   python -m feedbackforge serve        # AG-UI production server
   python -m feedbackforge serve --port 5000 --reload
   python -m feedbackforge workflow     # Run full analysis pipeline
+  python -m feedbackforge workflow --max-surveys 50
+  python -m feedbackforge workflow --devui  # Run workflow then launch DevUI
   python -m feedbackforge faq          # Generate FAQs using RAG
   python -m feedbackforge faq --days 7 --max-faqs 20
         """
@@ -124,6 +165,8 @@ Examples:
     # Workflow mode (batch analysis)
     workflow_parser = subparsers.add_parser("workflow", help="Run full analysis pipeline")
     workflow_parser.add_argument("--max-surveys", type=int, default=20, help="Max surveys to analyze (default: 20)")
+    workflow_parser.add_argument("--devui", action="store_true", help="Launch DevUI after workflow completes")
+    workflow_parser.add_argument("--port", type=int, default=8090, help="Port for DevUI (default: 8090)")
 
     # FAQ mode (RAG-based FAQ generation)
     faq_parser = subparsers.add_parser("faq", help="Generate FAQs from customer feedback using RAG")
@@ -132,7 +175,7 @@ Examples:
     args = parser.parse_args()
 
     if args.mode == "workflow":
-        asyncio.run(run_workflow_mode(max_surveys=args.max_surveys))
+        asyncio.run(run_workflow_mode(max_surveys=args.max_surveys, devui=args.devui, port=args.port))
     elif args.mode == "serve":
         run_serve_mode(host=args.host, port=args.port, reload=args.reload)
     elif args.mode == "faq":

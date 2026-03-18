@@ -52,7 +52,7 @@ dev = [
     "ruff>=0.4.0",
 ]
 eval = [
-    "azure-ai-evaluation>=1.0.0",
+    "azure-ai-evaluation>=1.1.0",  # Updated for gpt-4o compatibility
     "pandas>=2.0.0",
 ]
 

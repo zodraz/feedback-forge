@@ -46,7 +46,8 @@
             "request": "launch",
             "module": "feedbackforge",
             "args": [
-                "workflow"
+                "workflow",
+                "--devui"
             ],
             "console": "integratedTerminal",
             "justMyCode": false,
