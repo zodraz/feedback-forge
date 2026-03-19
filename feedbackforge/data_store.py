@@ -45,6 +45,7 @@ class CosmosDBFeedbackStore:
         self.container_name = container_name
         self.alerts_container_name = "alerts"
         self.faqs_container_name = "faqs"
+        self.workflow_reports_container_name = "workflow_reports"
 
         # Initialize client with key or DefaultAzureCredential
         if key:
@@ -91,6 +92,13 @@ class CosmosDBFeedbackStore:
                 partition_key=PartitionKey(path="/id")
             )
             logger.info(f"✅ Container '{self.faqs_container_name}' ready")
+
+            # Create Workflow Reports container
+            self.workflow_reports_container = self.database.create_container_if_not_exists(
+                id=self.workflow_reports_container_name,
+                partition_key=PartitionKey(path="/report_type")
+            )
+            logger.info(f"✅ Container '{self.workflow_reports_container_name}' ready")
 
         except exceptions.CosmosHttpResponseError as e:
             logger.error(f"Failed to initialize Cosmos DB: {e}")
@@ -618,6 +626,87 @@ class CosmosDBFeedbackStore:
             logger.error(f"Failed to retrieve FAQs from Cosmos DB: {e}")
             return []
 
+    @trace_operation("cosmos.save_workflow_report")
+    def save_workflow_report(self, report: Dict[str, Any]) -> str:
+        """
+        Save workflow analysis report to Cosmos DB.
+
+        Args:
+            report: Workflow report dictionary containing final_report and metadata
+
+        Returns:
+            Report ID
+        """
+        try:
+            # Generate unique ID with timestamp
+            report_id = f"workflow_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            # Build document
+            document = {
+                "id": report_id,
+                "report_type": "workflow_analysis",  # Partition key
+                "generated_at": datetime.now().isoformat(),
+                "surveys_analyzed": report.get("surveys_analyzed", 0),
+                "final_report": report.get("final_report", {}),
+                "insights": report.get("insights", {}),
+                "priorities": report.get("priorities", {}),
+                "actions": report.get("actions", {}),
+                "parallel_analysis": report.get("parallel_analysis", {}),
+                "orchestrator_final": report.get("orchestrator_final", {}),
+                "timestamp": report.get("timestamp", datetime.now().isoformat())
+            }
+
+            # Save to Cosmos DB
+            self.workflow_reports_container.create_item(body=document)
+            logger.info(f"✅ Workflow report saved to Cosmos DB: {report_id}")
+
+            return report_id
+        except exceptions.CosmosHttpResponseError as e:
+            logger.error(f"Failed to save workflow report to Cosmos DB: {e.status_code} - {e.message}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error saving workflow report: {e}")
+            raise
+
+    @trace_operation("cosmos.get_workflow_reports")
+    def get_workflow_reports(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Retrieve workflow analysis reports from Cosmos DB.
+
+        Args:
+            limit: Maximum number of reports to return (default: 10)
+
+        Returns:
+            List of workflow report documents, sorted by generated_at (most recent first)
+        """
+        try:
+            query = "SELECT * FROM c ORDER BY c.generated_at DESC"
+            items = list(self.workflow_reports_container.query_items(
+                query=query,
+                enable_cross_partition_query=True
+            ))
+
+            # Limit results
+            return items[:limit] if limit else items
+        except Exception as e:
+            logger.error(f"Failed to retrieve workflow reports from Cosmos DB: {e}")
+            return []
+
+    @trace_operation("cosmos.get_latest_workflow_report")
+    def get_latest_workflow_report(self) -> Optional[Dict[str, Any]]:
+        """
+        Get the most recent workflow analysis report.
+
+        Returns:
+            Most recent workflow report or None if no reports exist
+        """
+        try:
+            reports = self.get_workflow_reports(limit=1)
+            return reports[0] if reports else None
+        except Exception as e:
+            logger.error(f"Failed to retrieve latest workflow report: {e}")
+            return None
+
 
 class InMemoryFeedbackStore:
     """In-memory fallback data store."""
@@ -627,6 +716,7 @@ class InMemoryFeedbackStore:
         self.analysis_results: Optional[Dict[str, Any]] = None
         self.alerts_list: List[Dict[str, Any]] = []
         self.faqs_list: List[Dict[str, Any]] = []
+        self.workflow_reports_list: List[Dict[str, Any]] = []
         self.load_mock_data()
 
     def load_mock_data(self) -> None:
@@ -867,6 +957,58 @@ class InMemoryFeedbackStore:
         except Exception as e:
             logger.error(f"Failed to retrieve FAQs from in-memory storage: {e}")
             return []
+
+    @trace_operation("memory.save_workflow_report")
+    def save_workflow_report(self, report: Dict[str, Any]) -> str:
+        """Save workflow analysis report to in-memory storage."""
+        try:
+            report_id = f"workflow_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            document = {
+                "id": report_id,
+                "report_type": "workflow_analysis",
+                "generated_at": datetime.now().isoformat(),
+                "surveys_analyzed": report.get("surveys_analyzed", 0),
+                "final_report": report.get("final_report", {}),
+                "insights": report.get("insights", {}),
+                "priorities": report.get("priorities", {}),
+                "actions": report.get("actions", {}),
+                "parallel_analysis": report.get("parallel_analysis", {}),
+                "orchestrator_final": report.get("orchestrator_final", {}),
+                "timestamp": report.get("timestamp", datetime.now().isoformat())
+            }
+
+            self.workflow_reports_list.append(document)
+            logger.info(f"✅ Workflow report saved to in-memory storage: {report_id}")
+            return report_id
+        except Exception as e:
+            logger.error(f"Failed to save workflow report to in-memory storage: {e}")
+            raise
+
+    @trace_operation("memory.get_workflow_reports")
+    def get_workflow_reports(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieve workflow analysis reports from in-memory storage."""
+        try:
+            sorted_reports = sorted(
+                self.workflow_reports_list,
+                key=lambda x: x.get('generated_at', ''),
+                reverse=True
+            )
+            logger.info(f"Retrieved {len(sorted_reports)} workflow reports from in-memory storage")
+            return sorted_reports[:limit] if limit else sorted_reports
+        except Exception as e:
+            logger.error(f"Failed to retrieve workflow reports from in-memory storage: {e}")
+            return []
+
+    @trace_operation("memory.get_latest_workflow_report")
+    def get_latest_workflow_report(self) -> Optional[Dict[str, Any]]:
+        """Get the most recent workflow analysis report."""
+        try:
+            reports = self.get_workflow_reports(limit=1)
+            return reports[0] if reports else None
+        except Exception as e:
+            logger.error(f"Failed to retrieve latest workflow report: {e}")
+            return None
 
 
 # Initialize global data store

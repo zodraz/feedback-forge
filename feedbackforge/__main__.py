@@ -22,6 +22,7 @@ import asyncio
 import argparse
 import json
 import logging
+import os
 from datetime import datetime
 
 from feedbackforge.data_store import feedback_store
@@ -48,6 +49,48 @@ logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+def write_workflow_report_to_volume(results: dict, output_dir: str = "/mnt/reports"):
+    """
+    Write workflow final_report to mounted volume for persistence.
+
+    Args:
+        results: Workflow results dictionary
+        output_dir: Directory path for mounted volume (default: /mnt/reports)
+    """
+    from pathlib import Path
+
+    if not results.get("final_report"):
+        logger.warning("⚠️  No final_report in results, skipping file write")
+        return
+
+    try:
+        # Create output directory if it doesn't exist
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"workflow_report_{timestamp}.json"
+        filepath = output_path / filename
+
+        # Write JSON report
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(results["final_report"], f, indent=2, ensure_ascii=False)
+
+        logger.info(f"✅ Workflow report written to: {filepath}")
+        logger.info(f"   File size: {filepath.stat().st_size / 1024:.2f} KB")
+
+        # Also write a "latest" symlink/copy for easy access
+        latest_path = output_path / "latest_report.json"
+        with open(latest_path, 'w', encoding='utf-8') as f:
+            json.dump(results["final_report"], f, indent=2, ensure_ascii=False)
+
+        logger.info(f"✅ Latest report symlink: {latest_path}")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to write workflow report: {e}", exc_info=True)
+
+
 async def run_workflow_in_background(max_surveys: int):
     """Background task to run workflow analysis."""
     surveys = feedback_store.get_surveys()[:max_surveys]
@@ -61,7 +104,18 @@ async def run_workflow_in_background(max_surveys: int):
     if results.get("final_report"):
         logger.info(json.dumps(results["final_report"], indent=2))
 
-    logger.info("\n✅ Workflow results are now available in DevUI")
+    # Write report to mounted volume (configurable via WORKFLOW_REPORT_PATH env var)
+    report_path = os.getenv("WORKFLOW_REPORT_PATH", "/mnt/reports")
+    write_workflow_report_to_volume(results, report_path)
+
+    # Save to CosmosDB for dashboard access
+    try:
+        report_id = feedback_store.save_workflow_report(results)
+        logger.info(f"✅ Workflow report saved to CosmosDB: {report_id}")
+    except Exception as e:
+        logger.error(f"⚠️  Failed to save workflow report to CosmosDB: {e}")
+
+    logger.info("\n✅ Workflow results are now available in DevUI and dashboard")
 
     return results
 
@@ -106,6 +160,17 @@ async def run_workflow_mode(max_surveys: int = 200, devui: bool = False, port: i
         logger.info("\n" + "=" * 60 + "\n📊 RESULTS\n" + "=" * 60)
         if results.get("final_report"):
             logger.info(json.dumps(results["final_report"], indent=2))
+
+        # Write report to mounted volume (configurable via WORKFLOW_REPORT_PATH env var)
+        report_path = os.getenv("WORKFLOW_REPORT_PATH", "/mnt/reports")
+        write_workflow_report_to_volume(results, report_path)
+
+        # Save to CosmosDB for dashboard access
+        try:
+            report_id = feedback_store.save_workflow_report(results)
+            logger.info(f"✅ Workflow report saved to CosmosDB: {report_id}")
+        except Exception as e:
+            logger.error(f"⚠️  Failed to save workflow report to CosmosDB: {e}")
 
         return results
 

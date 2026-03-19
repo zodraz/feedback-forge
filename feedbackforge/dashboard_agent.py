@@ -5,7 +5,6 @@ FeedbackForge Chat Agent
 ChatAgent creation for the executive dashboard assistant.
 """
 
-import asyncio
 import os
 import httpx
 import logging
@@ -26,6 +25,9 @@ from .chat_tools import (
     set_alert,
     generate_action_items,
     escalate_to_team,
+    run_workflow_analysis,
+    get_latest_workflow_report,
+    get_workflow_reports_history,
 )
 
 AGENT_INSTRUCTIONS = """You are FeedbackForge, an Executive Dashboard Assistant for analyzing customer feedback.
@@ -38,6 +40,15 @@ Capabilities:
 - Anomaly detection for emerging issues
 - Action item generation and team escalation
 - Create actionable tickets in Jira via Action Planner agent (A2A)
+- **Comprehensive Workflow Analysis** - Multi-agent pipeline for executive reports
+
+Workflow Analysis (run_workflow_analysis):
+- Use when user asks for "comprehensive analysis", "full report", "executive summary", or "complete analysis"
+- Runs parallel multi-agent analysis (sentiment, topics, anomalies, competitive, insights, priorities, actions)
+- Takes 30-60 seconds but provides the most thorough analysis
+- Saves results to database for future reference
+- Use get_latest_workflow_report() to view the complete report afterward
+- Use get_workflow_reports_history() to compare with past analyses
 
 When to Create Tickets:
 - User explicitly asks to "create tickets", "create a ticket", "track this", "make a ticket"
@@ -50,7 +61,8 @@ Communication style:
 - Highlight priorities (P0=Critical, P1=High, P2=Medium)
 - Always offer next steps or deeper analysis
 - Proactively flag urgent issues
-- When tickets are created, report the ticket ID and URL"""
+- When tickets are created, report the ticket ID and URL
+- For comprehensive insights, suggest running workflow analysis"""
 
 
 async def create_action_plan(
@@ -157,6 +169,9 @@ TOOLS = [
     generate_action_items,
     escalate_to_team,
     create_action_plan,  # A2A call to Action Planner agent
+    run_workflow_analysis,  # Comprehensive multi-agent workflow analysis
+    get_latest_workflow_report,  # Retrieve most recent workflow report
+    get_workflow_reports_history,  # Browse historical workflow reports
 ]
 
 

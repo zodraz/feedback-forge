@@ -1,0 +1,55 @@
+# Unique identifier/name for this agent
+name: ActionPlanningAgent
+# Brief description of what this agent does
+description: >
+  Converts customer feedback insights into trackable tickets in Jira
+metadata:
+  # Categorization tags for organizing and discovering agents
+  authors:
+    - Microsoft
+  tags:
+    - "action-planning"
+    - "ticket-creation" 
+    - "jira" 
+    - "feedback" 
+    - "agent-framework"
+template:
+  name: ActionPlanningAgent
+  kind: hosted
+  protocols:
+    - protocol: responses
+  environment_variables:
+    - name: AZURE_OPENAI_ENDPOINT
+      value: "https://feedbackforge-resource.services.ai.azure.com/api/projects/feedbackforge-prj"
+    - name: AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME
+      value: "gpt-5.1-chat"
+    - name: AZURE_TENANT_ID
+      value: "4f5d44e6-db5c-40c0-a4d6-c0fd8d824e15"
+    - name: AZURE_CLIENT_ID
+      value: ="97bb1389-876f-4f1a-9069-db037b185b0e"
+    - name: AZURE_CLIENT_SECRET
+      value: "lek8Q~9OwxtK.8m-5iSR5mywiozSppVPJ~VyybVL"
+    - name: JIRA_URL
+      value: https://codecrafterslab.atlassian.net
+    - name: JIRA_EMAIL
+      value: abel.vilalta@codecrafterslab.com
+    - name: JIRA_API_TOKEN
+      value: "ATATT3xFfGF0bWUQkJ-82-4HeHcgmzdsGAd_GgZOt6hs7O5ziN22j1W-y5tYtYPH93X0SiSNe0wiR_Wyu1i3u0be5IusYN895-vf6xztCEKcgNWaaq04mSFFrXjJ2-T9FpbKyK6VLS4s1erlcJRhEryP7IaK_pooVFlTs7iKFGq3KudGytRer-A=DECE1B5D"
+    - name: JIRA_PROJECT_KEY
+      value: PROJ
+    - name: JIRA_DEFAULT_ASSIGNEE
+      value: unassigned
+    - name: FEEDBACKFORGE_DASHBOARD_URL
+      value: http://localhost:8081/agent
+    - name: A2A_ENABLE_CALLBACK
+      value: true
+    - name: HOST
+      value: 0.0.0.0
+    - name: PORT
+      value: 8084
+    - name: LOG_LEVEL
+      value: INFO
+resources:
+  - kind: model
+    id: gpt-5.1-chat
+    name: chat

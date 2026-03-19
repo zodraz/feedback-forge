@@ -336,7 +336,29 @@ class ReportGenerator(Executor):
         self.agent = ChatAgent(
             chat_client=chat_client,
             name="ReportGenerator",
-            instructions="""Generate report. Return JSON: {"executive_summary": "", "key_metrics": {}, "critical_issues": [], "recommendations": []}"""
+            instructions="""You are an executive report generator. Analyze ALL the data provided and create a comprehensive report.
+
+IMPORTANT: Your executive summary MUST cover ALL significant topics, issues, and themes found in the analysis. Do not focus only on one issue.
+
+Required output format (JSON):
+{
+  "executive_summary": "A comprehensive paragraph covering: (1) overall sentiment trends, (2) ALL major topics/themes identified, (3) ALL critical issues by priority, (4) customer impact across segments, (5) competitive insights if any. Be thorough and balanced - do not omit significant findings.",
+  "key_metrics": {
+    "total_responses": <number>,
+    "sentiment_breakdown": {"positive": <pct>, "neutral": <pct>, "negative": <pct>},
+    "top_topics": [<list of all major topics with counts>],
+    "critical_count": <number>,
+    "high_priority_count": <number>
+  },
+  "critical_issues": [
+    {"issue": "<description>", "priority": "<P0/P1/P2>", "impact": "<customer count or severity>", "category": "<topic/theme>"}
+  ],
+  "recommendations": [
+    {"action": "<what to do>", "priority": "<urgency>", "owner": "<suggested team>", "rationale": "<why>"}
+  ]
+}
+
+Ensure the executive summary is comprehensive and mentions ALL key findings, not just the most prominent one."""
         )
         super().__init__(id=id)
 
@@ -353,7 +375,22 @@ class ReportGenerator(Executor):
             if state.actions:
                 merged.actions = state.actions
 
-        context = f"All Results:\n{json.dumps({'sentiment': merged.sentiment, 'topics': merged.topics, 'insights': merged.insights, 'priorities': merged.priorities, 'actions': merged.actions})}"
+        # Build comprehensive context for report generation
+        context = f"""Generate a comprehensive executive report based on the complete analysis below.
+
+REMEMBER: Cover ALL significant findings in the executive summary, not just one issue.
+
+Complete Analysis Data:
+- Total Surveys: {len(merged.surveys)}
+- Sentiment Analysis: {json.dumps(merged.sentiment, indent=2)}
+- Topic Extraction: {json.dumps(merged.topics, indent=2)}
+- Anomaly Detection: {json.dumps(merged.anomalies, indent=2) if merged.anomalies else 'None'}
+- Competitive Intelligence: {json.dumps(merged.competitive, indent=2) if merged.competitive else 'None'}
+- Key Insights: {json.dumps(merged.insights, indent=2)}
+- Priority Rankings: {json.dumps(merged.priorities, indent=2)}
+- Recommended Actions: {json.dumps(merged.actions, indent=2)}
+
+Generate a balanced report that addresses all major topics and issues found above."""
         result = await self.agent.run(context)
         merged.report = parse_json_response(result.text)
         logger.info(f"✅ Report generated")

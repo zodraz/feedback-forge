@@ -126,6 +126,19 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Extract metadata for Action Planner
+        id: meta-action-planner
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ACTION_PLANNER_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
@@ -180,6 +193,15 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-faqs.outputs.tags }}
           labels: ${{ steps.meta-faqs.outputs.labels }}
+
+      - name: Build and push Action Planner image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./action-planner
+          file: ./action-planner/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-action-planner.outputs.tags }}
+          labels: ${{ steps.meta-action-planner.outputs.labels }}
 
       - name: Image digest summary
         run: |

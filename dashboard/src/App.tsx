@@ -70,6 +70,12 @@ function Sidebar() {
     { icon: "🏆", label: "Competitors", query: "What are customers saying about competitors?" },
     { icon: "⚠️", label: "Churn Risks", query: "Show me customers at risk of churning" },
     { icon: "📱", label: "iOS Issues", query: "Tell me more about the iOS crashes" },
+    { icon: "🎯", label: "Comprehensive Analysis", query: "Run a comprehensive workflow analysis on 20 surveys" },
+    { icon: "📊", label: "Latest Report", query: "Show me the latest workflow report" },
+    { icon: "📚", label: "Report History", query: "Show me the workflow reports history" },
+    { icon: "👤", label: "Customer Context", query: "Get context for a specific customer" },
+    { icon: "✅", label: "Action Items", query: "Generate action items for the top issue" },
+    { icon: "🎫", label: "Create Tickets", query: "Create tickets for the critical issues" },
   ];
 
   return (
@@ -96,14 +102,17 @@ function Sidebar() {
       <div className="sidebar-info">
         <h3>Available Tools</h3>
         <ul>
-          <li>Weekly summaries</li>
-          <li>Issue deep-dives</li>
-          <li>Competitor analysis</li>
-          <li>Customer context</li>
-          <li>Anomaly detection</li>
-          <li>Alert management</li>
-          <li>Action generation</li>
-          <li>Team escalation</li>
+          <li>📈 Weekly summaries</li>
+          <li>🔍 Issue deep-dives</li>
+          <li>🏆 Competitor analysis</li>
+          <li>👤 Customer context</li>
+          <li>🚨 Anomaly detection</li>
+          <li>⚠️ Alert management</li>
+          <li>✅ Action generation</li>
+          <li>📢 Team escalation</li>
+          <li>🎯 Workflow analysis</li>
+          <li>📊 Workflow reports</li>
+          <li>🎫 Ticket creation (A2A)</li>
         </ul>
       </div>
     </aside>

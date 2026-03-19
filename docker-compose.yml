@@ -26,9 +26,13 @@ services:
   #     # MCP Server URL for data sync agent
   #     - FEEDBACKFORGE_MCP_URL=http://mcp-server:8085
   #     - FEEDBACKFORGE_USE_MCP=false
+  #     # Workflow report output path
+  #     - WORKFLOW_REPORT_PATH=/mnt/reports
   #     # Note: Zendesk credentials NOT needed here - MCP server handles all Zendesk communication
   #   env_file:
   #     - .env
+  #   volumes:
+  #     - workflow-reports:/mnt/reports
   #   depends_on:
   #     - mcp-server
   #   networks:
@@ -110,41 +114,38 @@ services:
   #     start_period: 20s
 
 
-  # Workflow
-  # workflow:
-  #   build:
-  #     context: .
-  #     dockerfile: feedbackforge/Workflow.Dockerfile
-  #   container_name: feedbackforge-workflow
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     # Load from .env file
-  #     - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-  #     - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-  #     - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
-  #     - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
-  #     - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
-  #     - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
-  #     # Azure Redis Cache (managed)
-  #     - REDIS_URL=${REDIS_URL}
-  #     # Azure Service Principal for DefaultAzureCredential
-  #     - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-  #     - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-  #     - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-  #   env_file:
-  #     - .env
-  #   # depends_on:
-  #   #   - redis  # Disabled when using Azure Redis Cache
-  #   networks:
-  #     - feedbackforge
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 40s
+  # Workflow (one-time execution)
+  workflow:
+    build:
+      context: .
+      dockerfile: feedbackforge/Workflow.Dockerfile
+    container_name: feedbackforge-workflow
+    command: ["python", "-m", "feedbackforge", "workflow", "--max-surveys", "20"]
+    environment:
+      # Load from .env file
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+      - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
+      # Azure Redis Cache (managed)
+      - REDIS_URL=${REDIS_URL}
+      # Azure Service Principal for DefaultAzureCredential
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      # Workflow report output path
+      - WORKFLOW_REPORT_PATH=/mnt/reports
+    env_file:
+      - .env
+    volumes:
+      - workflow-reports:/mnt/reports
+    # depends_on:
+    #   - redis  # Disabled when using Azure Redis Cache
+    networks:
+      - feedbackforge
+    restart: "no"  # Run once and stop (don't restart)
 
   # Create FAQS
   # create-faqs:
@@ -240,3 +241,10 @@ networks:
 volumes:
   redis-data:
     driver: local
+  workflow-reports:
+    driver: local
+    # Alternative: Use bind mount to local directory
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: ./reports
