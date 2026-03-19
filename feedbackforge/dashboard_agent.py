@@ -7,6 +7,8 @@ ChatAgent creation for the executive dashboard assistant.
 
 import asyncio
 import os
+import httpx
+import logging
 
 from agent_framework import ChatAgent
 from azure.identity.aio import DefaultAzureCredential
@@ -35,13 +37,115 @@ Capabilities:
 - Customer context lookup
 - Anomaly detection for emerging issues
 - Action item generation and team escalation
+- Create actionable tickets in Jira via Action Planner agent (A2A)
+
+When to Create Tickets:
+- User explicitly asks to "create tickets", "create a ticket", "track this", "make a ticket"
+- Critical issues affecting many customers that need immediate action
+- Use create_action_plan tool to call the Action Planner agent
 
 Communication style:
 - Be concise and data-driven
 - Use clear formatting with bullet points
 - Highlight priorities (P0=Critical, P1=High, P2=Medium)
 - Always offer next steps or deeper analysis
-- Proactively flag urgent issues"""
+- Proactively flag urgent issues
+- When tickets are created, report the ticket ID and URL"""
+
+
+async def create_action_plan(
+    issue_summary: str,
+    issue_description: str,
+    affected_customers: int,
+    feedback_ids: str = ""
+) -> dict:
+    """
+    Tool: Create actionable tickets via Action Planner agent (A2A call).
+
+    Calls the separate Action Planner agent to convert feedback insights
+    into trackable tickets in Jira.
+
+    Args:
+        issue_summary: Brief summary of the issue (max 100 chars)
+        issue_description: Detailed description of the issue
+        affected_customers: Number of affected customers
+        feedback_ids: Comma-separated feedback IDs (optional)
+
+    Returns:
+        Action plan result with created tickets
+    """
+    logger = logging.getLogger(__name__)
+    action_planner_url = os.getenv("ACTION_PLANNER_URL", "http://localhost:8084/")
+
+    # Build the prompt for Action Planner agent
+    prompt = f"""Create an action plan for this customer feedback issue:
+
+**Summary:** {issue_summary}
+
+**Description:**
+{issue_description}
+
+**Impact:**
+- Affected Customers: {affected_customers}
+- Related Feedback IDs: {feedback_ids or 'None'}
+
+**Actions Needed:**
+1. Analyze the issue and determine priority, category, and effort
+2. Create appropriate tickets in the configured ticketing system
+3. Return the ticket IDs and URLs
+
+Please analyze this issue and create the necessary tickets."""
+
+    try:
+        # Lazy import to avoid loading A2AAgent when not needed (e.g., MCP server mode)
+        from agent_framework.a2a import A2AAgent
+        from a2a.client import A2ACardResolver
+
+        logger.info(f"🔗 Calling Action Planner agent at {action_planner_url}")
+        logger.info(f"   Issue: {issue_summary} ({affected_customers} affected)")
+
+        # Discover agent card and create A2A agent
+        async with httpx.AsyncClient(timeout=60.0) as http_client:
+            resolver = A2ACardResolver(httpx_client=http_client, base_url=action_planner_url)
+            agent_card = await resolver.get_agent_card()
+            logger.info(f"   Found agent: {agent_card.name} - {agent_card.description}")
+
+        # Use A2AAgent for proper A2A protocol communication
+        async with A2AAgent(
+            name=agent_card.name,
+            description=agent_card.description,
+            agent_card=agent_card,
+            url=action_planner_url,
+        ) as a2a_agent:
+            # Make A2A call - the agent waits for completion internally
+            response = await a2a_agent.run(prompt)
+
+        logger.info("✅ Action Planner agent completed successfully")
+
+        # Extract the agent's response
+        response_text = "\n".join(msg.text for msg in response.messages if msg.text)
+
+        return {
+            "success": True,
+            "response": response_text,
+            "action_planner_url": action_planner_url,
+            "agent_name": agent_card.name
+        }
+
+    except httpx.HTTPError as e:
+        logger.error(f"❌ Failed to call Action Planner agent: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"Action Planner agent is not available at {action_planner_url}. Make sure it's running: cd action-planner && python -m actionplanner"
+        }
+    except Exception as e:
+        logger.error(f"❌ Unexpected error calling Action Planner: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 
 TOOLS = [
     get_weekly_summary,
@@ -52,6 +156,7 @@ TOOLS = [
     set_alert,
     generate_action_items,
     escalate_to_team,
+    create_action_plan,  # A2A call to Action Planner agent
 ]
 
 
@@ -83,7 +188,7 @@ def validate_tools():
     logger.info("✅ Validation complete")
 
 
-def create_dashboard_agent() -> ChatAgent:
+async def create_dashboard_agent() -> ChatAgent:
     """Create the Executive Dashboard Assistant using Azure AI Foundry.
 
     Uses environment variables for configuration:
@@ -144,7 +249,7 @@ def create_dashboard_agent() -> ChatAgent:
         # Run autonomous data sync agent before creating dashboard
         from .data_sync_agent import run_sync_before_dashboard
 
-        sync_result = asyncio.run(run_sync_before_dashboard())
+        sync_result = await run_sync_before_dashboard()
         if sync_result.get("success"):
             ingested = sync_result.get("ingested_count", 0)
             skipped = sync_result.get("skipped_count", 0)
@@ -190,20 +295,3 @@ def create_dashboard_agent() -> ChatAgent:
     except Exception as e:
         logger.error(f"❌ Failed to create ChatAgent: {e}", exc_info=True)
         raise
-
-    #     agent = chat_client.agents_client.update_agent(
-    #     assistant_id=found_agent.id,
-    #     model=found_agent.model,
-    #     instructions=found_agent.instructions,
-    #     tools=TOOLS,
-    # )
-    #print(f"✅ Created new agent: {agent.name}")
-
-# async def check_agent(agent_name: str, chat_client: AzureAIAgentClient) -> Optional[Agent]:
-#     found_agent = None
-#     all_agents_list = chat_client.agents_client.list_agents()
-#     async for a in all_agents_list:
-#         if a.name == agent_name:
-#             found_agent = a
-#             break
-#     return found_agent

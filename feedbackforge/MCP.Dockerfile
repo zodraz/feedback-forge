@@ -24,11 +24,11 @@ COPY feedbackforge /app/feedbackforge/
 RUN pip install -e .
 
 # Expose port
-EXPOSE 8082
+EXPOSE 8085
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8081/health || exit 1
 
 # Run the application
-CMD ["python", "-m", "feedbackforge", "mcp", "--transport","sse","--port", "8082", "--host", "0.0.0.0"]
+CMD ["python", "-m", "feedbackforge", "mcp", "--transport","sse","--port", "8085", "--host", "0.0.0.0"]

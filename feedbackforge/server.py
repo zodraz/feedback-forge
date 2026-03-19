@@ -48,6 +48,10 @@ logging.getLogger('agent_framework').setLevel(logging.DEBUG)
 logging.getLogger('agent_framework.azure').setLevel(logging.DEBUG)
 logging.getLogger('azure').setLevel(logging.WARNING)
 logging.getLogger('uvicorn').setLevel(logging.INFO)
+
+# Suppress SSL shutdown timeout errors from Application Insights telemetry
+logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
 logging.getLogger('fastapi').setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
@@ -169,7 +173,7 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
             logger.info("✅ Custom metrics initialized")
         logger.info("Version 6 of Server")
         # Create the dashboard agent and register AG-UI endpoint at /agent
-        dashboard_agent = create_dashboard_agent()
+        dashboard_agent = await create_dashboard_agent()
         add_agent_framework_fastapi_endpoint(app, dashboard_agent, "/agent")
         logger.info("✅ Dashboard agent initialized and registered at /agent")
 

@@ -142,7 +142,7 @@ Decision-making guidelines:
 Be autonomous but transparent - explain your decisions and actions."""
 
 
-async def sync_zendesk_data_via_mcp_sse(mcp_url: str = "http://127.0.0.1:8082") -> Dict[str, Any]:
+async def sync_zendesk_data_via_mcp_sse(mcp_url: str = "http://127.0.0.1:8085") -> Dict[str, Any]:
     """
     Autonomous sync workflow using MCP protocol with SSE transport.
 
@@ -435,7 +435,7 @@ async def sync_zendesk_data() -> Dict[str, Any]:
         Sync statistics and status
     """
     # Check if MCP server is available
-    mcp_url = os.environ.get("FEEDBACKFORGE_MCP_URL", "http://127.0.0.1:8082")
+    mcp_url = os.environ.get("FEEDBACKFORGE_MCP_URL", "http://127.0.0.1:8085")
     use_mcp = os.environ.get("FEEDBACKFORGE_USE_MCP", "true").lower() == "true"
 
     if use_mcp:
@@ -482,7 +482,7 @@ async def sync_zendesk_via_mcp(
     logger.info(f"🔧 Tool called: sync_zendesk_via_mcp(days={days}, status={status}, priority={priority}, limit={limit})")
 
     # Call the async sync directly (we're already in an event loop)
-    mcp_url = os.environ.get("FEEDBACKFORGE_MCP_URL", "http://127.0.0.1:8082")
+    mcp_url = os.environ.get("FEEDBACKFORGE_MCP_URL", "http://127.0.0.1:8085")
     result = await sync_zendesk_data_via_mcp_sse(mcp_url=mcp_url)
 
     logger.info(f"✅ Tool result: fetched={result.get('fetched_count', 0)}, ingested={result.get('ingested_count', 0)}")

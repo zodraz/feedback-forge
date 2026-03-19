@@ -41,6 +41,10 @@ logging.getLogger('agent_framework').setLevel(logging.DEBUG)
 logging.getLogger('agent_framework.azure').setLevel(logging.DEBUG)
 logging.getLogger('azure').setLevel(logging.WARNING)  # Azure SDK is too verbose
 
+# Suppress SSL shutdown timeout errors from Application Insights telemetry
+logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,7 +126,8 @@ def run_chat_mode(port: int = 8090):
     logger.info("  - 'Check for any anomalies'")
     logger.info("=" * 60)
 
-    agent = create_dashboard_agent()
+    # Create agent (now async, so use asyncio.run in this sync context)
+    agent = asyncio.run(create_dashboard_agent())
     serve(entities=[agent], port=port, auto_open=True)
 
 
@@ -133,7 +138,7 @@ def run_serve_mode(host: str = "0.0.0.0", port: int = 8081, reload: bool = False
     run_server(host=host, port=port, reload=reload)
 
 
-def run_mcp_mode(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8082):
+def run_mcp_mode(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8085):
     """Launch the MCP server for external feedback integration."""
     from feedbackforge.mcp_server import run_sse_server, main
 
@@ -215,8 +220,8 @@ Examples:
                            help="Transport protocol (default: stdio)")
     mcp_parser.add_argument("--host", type=str, default="127.0.0.1",
                            help="Host for SSE transport (default: 127.0.0.1)")
-    mcp_parser.add_argument("--port", type=int, default=8082,
-                           help="Port for SSE transport (default: 8082)")
+    mcp_parser.add_argument("--port", type=int, default=8085,
+                           help="Port for SSE transport (default: 8085)")
 
     args = parser.parse_args()
 

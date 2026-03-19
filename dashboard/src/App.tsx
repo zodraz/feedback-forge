@@ -11,16 +11,17 @@ interface Message {
 // Load API URLs from environment variables: agent and api
 // const AG_UI_URL = import.meta.env.VITE_AG_UI_URL || "http://localhost:8081/agent";
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/api";
-if (import.meta.env.PROD) {
+
+//if (import.meta.env.VITE_PROD) {
   // code inside here will be tree-shaken in production builds
-  console.log('Production mode')
-  var AG_UI_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/agent"
-  var API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
-} else {
+//  console.log('Production mode')
+//  var AG_UI_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/agent"
+//  var API_BASE_URL ="https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
+//} else {
   var AG_UI_URL ="http://localhost:8081/agent"
   var API_BASE_URL ="http://localhost:8081/api"
   console.log('Development mode')
-}
+//}
 
 
 function App() {

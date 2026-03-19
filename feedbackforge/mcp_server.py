@@ -860,7 +860,7 @@ async def main():
         )
 
 
-def run_sse_server(host: str = "127.0.0.1", port: int = 8082):
+def run_sse_server(host: str = "127.0.0.1", port: int = 8085):
     """Run the MCP server with SSE transport over HTTP."""
     import uvicorn
 
@@ -881,10 +881,14 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
+    # Suppress SSL shutdown timeout errors from Application Insights telemetry
+    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
+
     # Check for SSE mode
     if "--sse" in sys.argv:
         host = "127.0.0.1"
-        port = 8082
+        port = 8085
 
         for i, arg in enumerate(sys.argv):
             if arg == "--host" and i + 1 < len(sys.argv):
