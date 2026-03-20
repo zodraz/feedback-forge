@@ -42,6 +42,7 @@ dependencies = [
     # OpenTelemetry
     "opentelemetry-api>=1.22.0",
     "opentelemetry-sdk>=1.22.0",
+    "opentelemetry-semantic-conventions>=0.44b0",  # Required for LLM attributes
     "opentelemetry-instrumentation-fastapi>=0.43b0",
     "opentelemetry-instrumentation-redis>=0.43b0",
     "opentelemetry-instrumentation-httpx>=0.43b0",
