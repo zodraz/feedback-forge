@@ -198,7 +198,7 @@ jobs:
       - name: Build and push Action Planner image
         uses: docker/build-push-action@v5
         with:
-          context: ./action-planner
+          context: .
           file: ./action-planner/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-action-planner.outputs.tags }}

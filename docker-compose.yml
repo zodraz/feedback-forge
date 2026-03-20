@@ -78,40 +78,40 @@ services:
       retries: 3
       start_period: 20s
   
-  # action-planner:
-  #   build:
-  #     context: .
-  #     dockerfile: action-planner/Dockerfile
-  #   container_name: action-planner
-  #   ports:
-  #     - "8084:8084"
-  #   environment:
-  #     Azure OpenAI / Azure AI Project
-  #     - AZURE_AI_PROJECT_ENDPOINT=${AZURE_AI_PROJECT_ENDPOINT}
-  #     - AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME=${AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME}
-  #     - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-  #     - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-  #     - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-
-  #     Jira (optional)
-  #     - JIRA_URL=${JIRA_URL}
-  #     - JIRA_EMAIL=${JIRA_EMAIL}
-  #     - JIRA_API_TOKEN=${JIRA_API_TOKEN}
-  #     - JIRA_PROJECT_KEY=${JIRA_PROJECT_KEY}
-
-  #     Server
-  #     - HOST=0.0.0.0
-  #     - PORT=8084
-  #     - LOG_LEVEL=INFO
-  #   env_file:
-  #     - .env
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8084/api/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 20s
+  action-planner:
+    build:
+      context: .
+      dockerfile: action-planner/Dockerfile
+    container_name: action-planner
+    ports:
+      - "8084:8084"
+    environment:
+      # Azure OpenAI / Azure AI Project
+      - AZURE_AI_PROJECT_ENDPOINT=${AZURE_AI_PROJECT_ENDPOINT}
+      - AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME=${AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      # Jira (optional)
+      - JIRA_URL=${JIRA_URL}
+      - JIRA_EMAIL=${JIRA_EMAIL}
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+      - JIRA_PROJECT_KEY=${JIRA_PROJECT_KEY}
+      # Server
+      - HOST=0.0.0.0
+      - PORT=8084
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    networks:
+      - feedbackforge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 
   # Workflow (one-time execution)
@@ -148,40 +148,40 @@ services:
     restart: "no"  # Run once and stop (don't restart)
 
   # Create FAQS
-  # create-faqs:
-  #   build:
-  #     context: .
-  #     dockerfile: feedbackforge/CreateFAQs.Dockerfile
-  #   container_name: feedbackforge-create-faqs
-  #   ports:
-  #     - "8083:8083"
-  #   environment:
-  #     # Load from .env file
-  #     - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-  #     - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-  #     - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
-  #     - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
-  #     - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
-  #     - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
-  #     # Azure Redis Cache (managed)
-  #     - REDIS_URL=${REDIS_URL}
-  #     # Azure Service Principal for DefaultAzureCredential
-  #     - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-  #     - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-  #     - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-  #   env_file:
-  #     - .env
-  #   # depends_on:
-  #   #   - redis  # Disabled when using Azure Redis Cache
-  #   networks:
-  #     - feedbackforge
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 40s
+  create-faqs:
+    build:
+      context: .
+      dockerfile: feedbackforge/CreateFAQs.Dockerfile
+    container_name: feedbackforge-create-faqs
+    ports:
+      - "8083:8083"
+    environment:
+      # Load from .env file
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+      - AZURE_SEARCH_API_KEY=${AZURE_SEARCH_API_KEY}
+      # Azure Redis Cache (managed)
+      - REDIS_URL=${REDIS_URL}
+      # Azure Service Principal for DefaultAzureCredential
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+    env_file:
+      - .env
+    # depends_on:
+    #   - redis  # Disabled when using Azure Redis Cache
+    networks:
+      - feedbackforge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 # Dashboard (Executive chat interface)
   dashboard:
