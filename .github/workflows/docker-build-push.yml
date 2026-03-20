@@ -21,6 +21,7 @@ env:
   DASHBOARD_IMAGE: feedbackforge-dashboard
   FAQS_IMAGE: feedbackforge-faqs
   MCP_IMAGE: feedbackforge-mcp
+  ACTION_PLANNER_IMAGE: feedbackforge-action-planner
 
 jobs:
   build-and-push:
