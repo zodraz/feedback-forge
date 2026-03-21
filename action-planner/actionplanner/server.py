@@ -65,7 +65,7 @@ def create_app(host: str = "localhost", port: int = 8084, cors_origins: Optional
             # Build A2A server components
             url = f"http://{host}:{port}/"
             agent_card = get_action_planner_card(url)
-            executor = AgentFrameworkExecutor(action_planning_agent._chat_agent)
+            executor = AgentFrameworkExecutor(action_planning_agent)
             task_store = InMemoryTaskStore()
             request_handler = DefaultRequestHandler(
                 agent_executor=executor,

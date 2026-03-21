@@ -9,9 +9,14 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from agent_framework import ChatAgent
-from agent_framework.azure import AzureAIAgentClient
-from azure.identity.aio import DefaultAzureCredential
+from azure.ai.agents import AgentsClient
+from azure.ai.agents.models import (
+    FunctionToolDefinition,
+    ToolDefinition,
+    AgentThreadCreationOptions,
+    ThreadMessageOptions,
+)
+from azure.identity import DefaultAzureCredential
 
 from .jira_client import JiraClient
 from .models import (
@@ -20,9 +25,6 @@ from .models import (
     Priority,
     Platform,
     EffortSize,
-    TicketingSystem,
-    CreatedTicket,
-    ActionPlanResult
 )
 
 logger = logging.getLogger(__name__)
@@ -97,50 +99,121 @@ class ActionPlanningAgent:
         logger.info("Initializing Action Planning Agent...")
 
         # Check required environment variables
-        self.endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT")
-        self.deployment = os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
+        endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT")
+        deployment = os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
 
-        if not all([self.endpoint, self.deployment]):
+        if not endpoint or not deployment:
             raise ValueError("Missing AZURE_AI_PROJECT_ENDPOINT or AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
+
+        self.endpoint: str = endpoint
+        self.deployment: str = deployment
 
         # Initialize ticketing system clients
         self.jira_client = JiraClient()
 
-        # Create the underlying ChatAgent
-        self._chat_agent: ChatAgent = self._create_chat_agent()
+        # Create agents client
+        self._client = AgentsClient(
+            endpoint=self.endpoint,
+            credential=DefaultAzureCredential()
+        )
+
+        # Create the hosted agent
+        self._agent = self._create_hosted_agent()
 
         logger.info("Action Planning Agent initialized")
+        logger.info(f"Agent ID: {self._agent.id}")
         logger.info(f"Available systems: {self.get_available_systems()}")
 
-    def _create_chat_agent(self) -> ChatAgent:
-        """Create the underlying ChatAgent with LLM."""
-        logger.info("Creating ChatAgent with Azure OpenAI...")
+    def _get_tool_definitions(self) -> list[ToolDefinition]:
+        """Define tools for the hosted agent."""
+        tools: list[ToolDefinition] = [
+            FunctionToolDefinition(
+                type="function",
+                function={
+                    "name": "analyze_issue",
+                    "description": "Analyze a feedback issue and create structured issue analysis",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "summary": {
+                                "type": "string",
+                                "description": "Brief issue summary"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Detailed description of the issue"
+                            },
+                            "affected_customers": {
+                                "type": "integer",
+                                "description": "Number of affected customers"
+                            },
+                            "feedback_ids": {
+                                "type": "string",
+                                "description": "Comma-separated feedback IDs (optional)"
+                            }
+                        },
+                        "required": ["summary", "description", "affected_customers"]
+                    }
+                }
+            ),
+            FunctionToolDefinition(
+                type="function",
+                function={
+                    "name": "create_jira_ticket",
+                    "description": "Create a Jira ticket from issue analysis",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "analysis_json": {
+                                "type": "string",
+                                "description": "JSON string of IssueAnalysis"
+                            }
+                        },
+                        "required": ["analysis_json"]
+                    }
+                }
+            ),
+            FunctionToolDefinition(
+                type="function",
+                function={
+                    "name": "get_available_systems",
+                    "description": "Check which ticketing systems are configured and available",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            )
+        ]
+        return tools
 
-        credential = DefaultAzureCredential()
+    def _create_hosted_agent(self):
+        """Create a hosted agent with Azure AI Agents."""
+        logger.info("Creating hosted agent with Azure AI Agents...")
 
-        chat_client = AzureAIAgentClient(
-            project_endpoint=self.endpoint,
-            model_deployment_name=self.deployment,
-            credential=credential,
-            agent_name="ActionPlanningAgent",
-            agent_description="Converts feedback insights into trackable action items"
-        )
+        # Get ACR image URL from environment or use default
+        acr_registry = os.environ.get("ACR_REGISTRY", "feedbackforge.azurecr.io")
+        image_name = os.environ.get("ACTION_PLANNER_IMAGE", "feedbackforge-action-planner")
+        image_tag = os.environ.get("ACTION_PLANNER_TAG", "latest")
+        image_url = f"{acr_registry}/{image_name}:{image_tag}"
 
-        # Create agent with action planning tools
-        agent = ChatAgent(
-            chat_client=chat_client,
+        # Create agent
+        agent = self._client.create_agent(
+            model=self.deployment,
+            name="action-planning-agent",
             instructions=AGENT_INSTRUCTIONS,
-            name="ActionPlanningAgent",
-            agent_id="ActionPlanningAgent:1",
-            description="Autonomous action planning agent with multi-platform ticket creation",
-            tools=[
-                self.analyze_issue,
-                self.create_jira_ticket,
-                self.get_available_systems
-            ]
+            tools=self._get_tool_definitions(),
+            description="Converts feedback insights into trackable action items",
+            metadata={
+                "image": image_url,
+                "cpu": "1",
+                "memory": "2Gi",
+            }
         )
 
-        logger.info(f"ChatAgent created: {agent.name}")
+        logger.info(f"Agent created: {agent.id}")
+        logger.info(f"Model: {self.deployment}")
+
         return agent
 
     def get_available_systems(self) -> Dict[str, bool]:
@@ -294,10 +367,29 @@ class ActionPlanningAgent:
         logger.info(f"Running Action Planning Agent with prompt: {prompt[:100]}...")
 
         try:
-            result = await self._chat_agent.run(prompt)
-            logger.info("Action Planning Agent completed")
-            # Extract text content from AgentRunResponse
-            return result.text
+            # Create a thread and run the agent
+            thread = AgentThreadCreationOptions(
+                messages=[
+                    ThreadMessageOptions(
+                        role="user",
+                        content=prompt
+                    )
+                ]
+            )
+
+            run = self._client.create_thread_and_run(
+                agent_id=self._agent.id,
+                thread=thread
+            )
+
+            # Wait for completion and get the result
+            # Note: You may want to poll for completion in a production setup
+            logger.info(f"Run created: {run.id}, status: {run.status}")
+
+            # TODO: Implement proper polling for run completion
+            # For now, return the run ID
+            return f"Agent run started: {run.id}"
+
         except Exception as e:
             logger.error(f"Agent execution failed: {e}", exc_info=True)
             return f"Error: {str(e)}"

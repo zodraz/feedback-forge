@@ -76,9 +76,16 @@ class AgentFrameworkExecutor(AgentExecutor):
 
             # Build response text from agent messages
             response_parts: list[Part] = []
-            for msg in response.messages:
-                if msg.text:
-                    response_parts.append(TextPart(text=msg.text))
+
+            # Handle different response types
+            if isinstance(response, str):
+                # Direct string response
+                response_parts.append(TextPart(text=response))
+            elif hasattr(response, 'messages'):
+                # Agent Framework response with messages
+                for msg in response.messages:
+                    if msg.text:
+                        response_parts.append(TextPart(text=msg.text))
 
             if not response_parts:
                 response_parts.append(TextPart(text=str(response)))
