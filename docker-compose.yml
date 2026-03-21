@@ -175,7 +175,7 @@ services:
     #   - redis  # Disabled when using Azure Redis Cache
     networks:
       - feedbackforge
-    restart: unless-stopped
+    # restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s

@@ -39,15 +39,10 @@ dependencies = [
     "mcp>=1.0.0",
     "httpx>=0.27.0",
     "starlette>=0.27.0",
-    # OpenTelemetry
+    # OpenTelemetry Core (required by agent-framework)
     "opentelemetry-api>=1.22.0",
     "opentelemetry-sdk>=1.22.0",
-    "opentelemetry-semantic-conventions>=0.44b0",  # Required for LLM attributes
-    "opentelemetry-instrumentation-fastapi>=0.43b0",
-    "opentelemetry-instrumentation-redis>=0.43b0",
-    "opentelemetry-instrumentation-httpx>=0.43b0",
-    "azure-monitor-opentelemetry-exporter>=1.0.0b21",
-    "azure-monitor-opentelemetry>=1.8.0",
+    "opentelemetry-semantic-conventions-ai>=0.4.0,<0.5.0",  # Required for LLM attributes, v0.5+ breaks compatibility
 ]
 
 [project.optional-dependencies]
@@ -59,6 +54,15 @@ dev = [
 eval = [
     "azure-ai-evaluation>=1.1.0",  # Updated for gpt-4o compatibility
     "pandas>=2.0.0",
+]
+telemetry = [
+    # Azure Monitor OpenTelemetry (optional - for Application Insights integration)
+    "opentelemetry-semantic-conventions>=0.44b0",
+    "opentelemetry-instrumentation-fastapi>=0.43b0",
+    "opentelemetry-instrumentation-redis>=0.43b0",
+    "opentelemetry-instrumentation-httpx>=0.43b0",
+    "azure-monitor-opentelemetry-exporter>=1.0.0b21",
+    "azure-monitor-opentelemetry>=1.8.0",
 ]
 
 [project.scripts]

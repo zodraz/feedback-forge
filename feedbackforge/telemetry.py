@@ -7,28 +7,38 @@ Configures OpenTelemetry with Azure Application Insights for:
 - Metrics
 - Logging
 - Automatic instrumentation for FastAPI, Redis, HTTP clients
+
+Note: OpenTelemetry is optional. Install with: pip install -e ".[telemetry]"
 """
 
 import logging
 import os
 from functools import wraps
-from typing import Optional
-
-from opentelemetry import trace, metrics
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION, SERVICE_INSTANCE_ID
-
-from azure.monitor.opentelemetry import configure_azure_monitor
-
+from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
 
+# Try to import Azure Monitor OpenTelemetry - it's optional
+try:
+    from opentelemetry import trace, metrics
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION, SERVICE_INSTANCE_ID
+    from azure.monitor.opentelemetry import configure_azure_monitor
+    from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter, AzureMonitorMetricExporter
+
+    OTEL_AVAILABLE = True
+except ImportError as e:
+    OTEL_AVAILABLE = False
+    trace = None
+    metrics = None
+    logger.info("📊 Azure Monitor OpenTelemetry not installed. Telemetry disabled. Install with: pip install -e '.[telemetry]'")
+
 # Global tracer and meter
-tracer: Optional[trace.Tracer] = None
-meter: Optional[metrics.Meter] = None
+tracer: Optional[Any] = None
+meter: Optional[Any] = None
 
 
 def setup_telemetry(service_name: str = "feedbackforge", service_version: str = "1.0.0") -> bool:
@@ -49,6 +59,11 @@ def setup_telemetry(service_name: str = "feedbackforge", service_version: str = 
     """
     global tracer, meter
 
+    # Check if Azure Monitor OpenTelemetry is available
+    if not OTEL_AVAILABLE:
+        logger.info("📊 Azure Monitor OpenTelemetry not available. Install with: pip install -e '.[telemetry]'")
+        return False
+
     # Check if telemetry is disabled
     if os.environ.get("DISABLE_TELEMETRY", "").lower() == "true":
         logger.info("📊 Telemetry disabled via DISABLE_TELEMETRY environment variable")
@@ -62,8 +77,6 @@ def setup_telemetry(service_name: str = "feedbackforge", service_version: str = 
         return False
 
     try:
-        from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter, AzureMonitorMetricExporter
-
         # Override service name if provided
         service_name = os.environ.get("OTEL_SERVICE_NAME", service_name)
 
@@ -118,6 +131,10 @@ def setup_telemetry_extended(enable_live_metrics: bool = True):
     Example:
         setup_telemetry_extended(enable_live_metrics=True)
     """
+    if not OTEL_AVAILABLE:
+        logger.info("📊 Azure Monitor OpenTelemetry not available. Install with: pip install -e '.[telemetry]'")
+        return
+
     connection_string = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
     if not connection_string:
@@ -157,6 +174,9 @@ def instrument_app(app):
     Args:
         app: FastAPI application instance
     """
+    if not OTEL_AVAILABLE:
+        return
+
     connection_string = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
     if not connection_string or os.environ.get("DISABLE_TELEMETRY", "").lower() == "true":
         return
@@ -190,7 +210,7 @@ def instrument_app(app):
 # Custom metrics (examples)
 def create_custom_metrics():
     """Create custom metrics for FeedbackForge."""
-    if not meter:
+    if not OTEL_AVAILABLE or not meter:
         return {}
 
     return {
@@ -230,8 +250,8 @@ def trace_operation(operation_name: str):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # If tracer is not configured, just run the function
-            if not tracer:
+            # If OpenTelemetry not available or tracer not configured, just run the function
+            if not OTEL_AVAILABLE or not tracer:
                 return func(*args, **kwargs)
 
             # Create span with tracer
