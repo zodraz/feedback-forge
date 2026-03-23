@@ -36,6 +36,7 @@ def get_embeddings(text: str) -> List[float]:
         api_key = os.environ.get("AZURE_OPENAI_KEY")
         endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
         deployment = os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")
+        api_version = os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_VERSION", "2024-10-21")
 
         if not api_key or not endpoint:
             logger.error("Azure OpenAI credentials not configured")
@@ -46,7 +47,7 @@ def get_embeddings(text: str) -> List[float]:
         client = AzureOpenAI(
             api_key=api_key,
             azure_endpoint=endpoint,
-            api_version="2024-10-21"
+            api_version=api_version
         )
 
         response = client.embeddings.create(

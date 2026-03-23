@@ -11,10 +11,10 @@ import logging
 
 from agent_framework import ChatAgent
 from azure.identity.aio import DefaultAzureCredential
-from agent_framework.azure import AzureAIAgentClient
+from azure.ai.projects.aio import AIProjectClient
+from azure.ai.projects.models import PromptAgentDefinition
 from .data_store import feedback_store
-from agent_framework.microsoft import PurviewPolicyMiddleware, PurviewSettings
-from azure.identity import InteractiveBrowserCredential
+from .azure_client_adapter import AIProjectChatClient
 
 from .chat_tools import (
     get_weekly_summary,
@@ -204,7 +204,18 @@ def validate_tools():
 
 
 async def create_dashboard_agent() -> ChatAgent:
-    """Create the Executive Dashboard Assistant using Azure AI Foundry.
+    """Create the Executive Dashboard Assistant using Azure AI Projects SDK.
+
+    Uses the new AIProjectClient pattern (similar to @azure/ai-projects in Node.js):
+    1. Create AIProjectClient with project endpoint and credential
+    2. Create agent version using project.agents.create_version()
+    3. Create AIProjectChatClient adapter for ChatClientProtocol compatibility
+    4. Wrap in ChatAgent for tool registration and conversation management
+
+    The adapter pattern:
+    - Obtains OpenAI client from project.inference
+    - Uses openai_client.conversations.create() for conversations
+    - Uses openai_client.responses.create() with agent reference
 
     Uses environment variables for configuration:
         - AZURE_AI_PROJECT_ENDPOINT: Azure AI Foundry project endpoint
@@ -226,28 +237,34 @@ async def create_dashboard_agent() -> ChatAgent:
         raise ValueError(error_msg)
 
     try:
-        #Create the agent
-        logger.info("🔧 Creating dashboard agent...")
+        # Create AI Project client using new AIProjectClient pattern
+        logger.info("🔧 Creating dashboard agent with AIProjectClient...")
         logger.info(f"   Project endpoint: {required_env_vars['AZURE_AI_PROJECT_ENDPOINT']}")
         logger.info(f"   Model deployment: {required_env_vars['AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME']}")
 
-        purview_middleware = PurviewPolicyMiddleware(
-            credential=InteractiveBrowserCredential(
-                client_id="required_env_vars['AZURE_CLIENT_ID']",
-            ),
-            settings=PurviewSettings(app_name="FeedbackForge")
-        )
-        
+        # Create Azure AI Project client
         credential = DefaultAzureCredential()
-        chat_client = AzureAIAgentClient(
-            project_endpoint=required_env_vars["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
-            credential=credential,
-            agent_name="FeedbackForge",
-            agent_description="Executive Dashboard Assistant for customer feedback analysis",
-            middleware=[purview_middleware]
+        project = AIProjectClient(
+            endpoint=str(required_env_vars["AZURE_AI_PROJECT_ENDPOINT"]),
+            credential=credential
         )
-        logger.info("✅ Chat client created successfully")
+        logger.info("✅ AIProjectClient created successfully")
+
+        # Create agent using the new agents API (matching JavaScript createVersion pattern)
+        logger.info("🤖 Creating agent version...")
+
+        agent_version = await project.agents.create_version(
+            agent_name= "FeedbackForge",
+            definition=PromptAgentDefinition(
+                model=str(required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"]),
+                instructions=AGENT_INSTRUCTIONS,
+            ),
+        )
+        logger.info(f"✅ Agent created (id: {agent_version.id}, name: {agent_version.name}, version: {agent_version.version})")
+
+        # Create adapter to bridge AIProjectClient with ChatClientProtocol
+        chat_client = AIProjectChatClient(project=project, agent_version=agent_version)
+        logger.info("✅ Chat client adapter created")
     except Exception as e:
         logger.error(f"❌ Failed to create chat client: {e}", exc_info=True)
         raise
@@ -275,21 +292,22 @@ async def create_dashboard_agent() -> ChatAgent:
         # Validate tools before creating agent
         validate_tools()
 
-        logger.info("🤖 Creating ChatAgent with tools...")
+        logger.info("🤖 Creating ChatAgent wrapper with tools...")
         logger.info(f"   Registering {len(TOOLS)} tools")
         for tool in TOOLS:
             tool_name = getattr(tool, '__name__', getattr(tool, 'name', str(tool)))
             logger.info(f"      - {tool_name}")
 
+        # Wrap the new AIProjectClient-based agent with ChatAgent for compatibility
         agent = ChatAgent(
-            chat_client=chat_client,
+            chat_client=chat_client,  # Use adapter that implements ChatClientProtocol
             instructions=AGENT_INSTRUCTIONS,
             name="FeedbackForge",
-            agent_id="FeedbackForge:1",
+            agent_id=agent_version.id,
             description="Executive Dashboard Assistant for customer feedback analysis",
             tools=TOOLS
         )
-        logger.info(f"✅ ChatAgent created successfully: {agent.name}")
+        logger.info(f"✅ ChatAgent wrapper created successfully: {agent.name}")
 
         # Wrap the agent's run method to catch errors
         original_run = agent.run

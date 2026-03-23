@@ -15,8 +15,10 @@ import os
 from typing import Any, Dict
 
 from agent_framework import ChatAgent
-from agent_framework.azure import AzureAIAgentClient
 from azure.identity.aio import DefaultAzureCredential
+from azure.ai.projects.aio import AIProjectClient
+from azure.ai.projects.models import PromptAgentDefinition
+from .azure_client_adapter import AIProjectChatClient
 
 logger = logging.getLogger(__name__)
 
@@ -32,46 +34,76 @@ class DataSyncAgent:
     - What insights to provide
 
     The agent has access to tools for checking data store state and syncing via MCP.
+
+    Use the async factory method: agent = await DataSyncAgent.create()
     """
 
-    def __init__(self):
-        """Initialize the Data Sync Agent with LLM backend."""
-        logger.info("🤖 Initializing DataSyncAgent class with LLM...")
+    def __init__(self, chat_agent: ChatAgent, endpoint: str, deployment: str):
+        """Private init - use DataSyncAgent.create() factory method instead."""
+        self._chat_agent = chat_agent
+        self.endpoint = endpoint
+        self.deployment = deployment
+
+    @classmethod
+    async def create(cls):
+        """
+        Async factory method to create DataSyncAgent.
+
+        Usage:
+            agent = await DataSyncAgent.create()
+        """
+        logger.info("🤖 Creating DataSyncAgent with Azure AI Projects SDK...")
 
         # Check required environment variables
-        self.endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT")
-        self.deployment = os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
+        endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT")
+        deployment = os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
 
-        if not all([self.endpoint, self.deployment]):
+        if not all([endpoint, deployment]):
             raise ValueError("Missing AZURE_AI_PROJECT_ENDPOINT or AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
 
-        # Create the underlying ChatAgent (from agent_framework)
-        # This ChatAgent uses Azure OpenAI LLM for intelligence
-        self._chat_agent: ChatAgent = self._create_chat_agent()
+        # Assert non-None for type checker (already validated above)
+        assert endpoint is not None
+        assert deployment is not None
 
-        logger.info(f"✅ DataSyncAgent initialized with LLM backend: {self.deployment}")
+        # Create chat agent
+        chat_agent = await cls._create_chat_agent_static(endpoint, deployment)
 
-    def _create_chat_agent(self) -> ChatAgent:
-        """Create the underlying ChatAgent with LLM."""
-        logger.info("🧠 Creating ChatAgent with Azure OpenAI LLM...")
+        logger.info(f"✅ DataSyncAgent initialized with LLM backend: {deployment}")
+        return cls(chat_agent, endpoint, deployment)
+
+    @staticmethod
+    async def _create_chat_agent_static(endpoint: str, deployment: str) -> ChatAgent:
+        """Create the underlying ChatAgent with LLM using AIProjectClient."""
+        logger.info("🧠 Creating ChatAgent with Azure AI Projects SDK...")
 
         credential = DefaultAzureCredential()
 
-        # Create Azure AI client that connects to Azure OpenAI LLM
-        chat_client = AzureAIAgentClient(
-            project_endpoint=self.endpoint,
-            model_deployment_name=self.deployment,
-            credential=credential,
-            agent_name="DataSyncAgent",
-            agent_description="Autonomous agent for intelligent data synchronization"
+        # Create AI Project client using new AIProjectClient pattern
+        project = AIProjectClient(
+            endpoint=endpoint,
+            credential=credential
         )
+        logger.info("✅ AIProjectClient created")
+
+        # Create agent version
+        agent_version = await project.agents.create_version(
+            agent_name="DataSyncAgent",
+            definition=PromptAgentDefinition(
+                model=deployment,
+                instructions=SYNC_AGENT_INSTRUCTIONS,
+            ),
+        )
+        logger.info(f"✅ Agent created (id: {agent_version.id}, name: {agent_version.name}, version: {agent_version.version})")
+
+        # Create adapter to bridge AIProjectClient with ChatClientProtocol
+        chat_client = AIProjectChatClient(project=project, agent_version=agent_version)
 
         # Create ChatAgent with LLM intelligence and tools
         agent = ChatAgent(
             chat_client=chat_client,
             instructions=SYNC_AGENT_INSTRUCTIONS,
             name="DataSyncAgent",
-            agent_id="DataSyncAgent:1",
+            agent_id=agent_version.id,
             description="Autonomous data synchronization agent with LLM intelligence",
             tools=[sync_zendesk_via_mcp, check_sync_status]
         )
@@ -529,14 +561,14 @@ async def check_sync_status() -> Dict[str, Any]:
     return result
 
 
-def create_sync_agent() -> ChatAgent:
+async def create_sync_agent() -> ChatAgent:
     """
-    Create the autonomous Data Sync Agent with LLM intelligence.
+    Create the autonomous Data Sync Agent with LLM intelligence using AIProjectClient.
 
     Returns:
         Configured ChatAgent for data synchronization
     """
-    logger.info("🤖 Creating Data Sync Agent with LLM...")
+    logger.info("🤖 Creating Data Sync Agent with Azure AI Projects SDK...")
 
     # Check required environment variables
     endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT")
@@ -545,22 +577,39 @@ def create_sync_agent() -> ChatAgent:
     if not all([endpoint, deployment]):
         raise ValueError("Missing AZURE_AI_PROJECT_ENDPOINT or AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
 
+    # Assert non-None for type checker (already validated above)
+    assert endpoint is not None
+    assert deployment is not None
+
     try:
         credential = DefaultAzureCredential()
-        chat_client = AzureAIAgentClient(
-            project_endpoint=endpoint,
-            model_deployment_name=deployment,
-            credential=credential,
-            agent_name="DataSyncAgent",
-            agent_description="Autonomous agent for intelligent data synchronization"
+
+        # Create AI Project client
+        project = AIProjectClient(
+            endpoint=endpoint,
+            credential=credential
         )
+        logger.info("✅ AIProjectClient created")
+
+        # Create agent version
+        agent_version = await project.agents.create_version(
+            agent_name="DataSyncAgent",
+            definition=PromptAgentDefinition(
+                model=deployment,
+                instructions=SYNC_AGENT_INSTRUCTIONS,
+            ),
+        )
+        logger.info(f"✅ Agent created (id: {agent_version.id}, name: {agent_version.name}, version: {agent_version.version})")
+
+        # Create adapter
+        chat_client = AIProjectChatClient(project=project, agent_version=agent_version)
 
         # Create agent with sync tools
         agent = ChatAgent(
             chat_client=chat_client,
             instructions=SYNC_AGENT_INSTRUCTIONS,
             name="DataSyncAgent",
-            agent_id="DataSyncAgent:1",
+            agent_id=agent_version.id,
             description="Autonomous data synchronization agent with LLM intelligence",
             tools=[sync_zendesk_via_mcp, check_sync_status]
         )
@@ -585,8 +634,8 @@ async def run_sync_with_agent() -> Dict[str, Any]:
     logger.info("🚀 Running autonomous data sync with LLM-powered DataSyncAgent...")
 
     try:
-        # Instantiate the DataSyncAgent class (which wraps ChatAgent + LLM)
-        sync_agent = DataSyncAgent()
+        # Create the DataSyncAgent using async factory (wraps ChatAgent + LLM)
+        sync_agent = await DataSyncAgent.create()
 
         logger.info(f"🧠 LLM Backend: Azure OpenAI at {sync_agent.endpoint}")
         logger.info(f"🤖 Model: {sync_agent.deployment}")
