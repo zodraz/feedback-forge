@@ -6,6 +6,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Accept build arguments for API URLs
+ARG VITE_API_BASE_URL=http://localhost:8081/api
+
+# Set as environment variables for Vite build
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Copy package files
 COPY package*.json ./
 
@@ -15,7 +21,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application (Vite will use the ENV variables)
 RUN npm run build
 
 # Stage 2: Production

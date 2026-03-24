@@ -16,6 +16,13 @@ from .data_store import feedback_store
 logger = logging.getLogger(__name__)
 
 
+def ensure_non_empty_result(result: str, default_message: str = "No data available") -> str:
+    """Ensure tool result is never None or empty string."""
+    if not result or not result.strip():
+        return json.dumps({"message": default_message}, indent=2)
+    return result
+
+
 @ai_function
 def get_weekly_summary() -> str:
     """Get weekly feedback summary with sentiment, top issues, and urgent items."""
@@ -41,7 +48,8 @@ def get_weekly_summary() -> str:
 @ai_function
 def get_issue_details(topic: Annotated[str, "The issue/topic to analyze (e.g., 'ios', 'pricing', 'support')"]) -> str:
     """Get detailed analysis for a specific issue including trend, severity, and recommendations."""
-    return json.dumps(feedback_store.get_issue_details(topic), indent=2)
+    result = json.dumps(feedback_store.get_issue_details(topic), indent=2)
+    return ensure_non_empty_result(result, f"No details found for topic: {topic}")
 
 
 @ai_function

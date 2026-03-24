@@ -254,6 +254,17 @@ def create_app(cors_origins: Optional[list[str]] = None) -> FastAPI:
         session = await session_manager.load_session(thread_id, user_id)
 
         if session:
+            # Filter out any messages with empty content to prevent Azure AI errors
+            if "messages" in session:
+                original_count = len(session["messages"])
+                session["messages"] = [
+                    m for m in session["messages"]
+                    if m.get("content") and m["content"].strip()
+                ]
+                filtered_count = len(session["messages"])
+                if filtered_count < original_count:
+                    logger.info(f"🧹 Filtered {original_count - filtered_count} empty messages from session {thread_id}")
+
             return session
         else:
             raise HTTPException(status_code=404, detail="Session not found or unauthorized")

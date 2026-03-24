@@ -11,6 +11,7 @@ import os
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, List
+import httpx
 
 from agent_framework import Executor, WorkflowContext, handler, ChatAgent
 from agent_framework.azure import AzureAIAgentClient
@@ -19,6 +20,40 @@ from azure.identity.aio import DefaultAzureCredential
 from .models import AnalysisState
 
 logger = logging.getLogger(__name__)
+
+
+def create_agent_client_with_timeout(
+    credential: DefaultAzureCredential,
+    agent_name: str,
+    agent_description: str,
+    timeout_seconds: int = 120
+) -> AzureAIAgentClient:
+    """
+    Create AzureAIAgentClient with custom timeout settings.
+
+    Args:
+        credential: Azure credential
+        agent_name: Name of the agent
+        agent_description: Description of the agent
+        timeout_seconds: Timeout in seconds (default: 120)
+
+    Returns:
+        Configured AzureAIAgentClient
+    """
+    # Create custom httpx client with longer timeout
+    http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(timeout_seconds, connect=30.0, read=timeout_seconds),
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
+    )
+
+    return AzureAIAgentClient(
+        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+        model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        credential=credential,
+        agent_name=agent_name,
+        agent_description=agent_description,
+        httpx_client=http_client
+    )
 
 
 def parse_json_response(text: str) -> Dict[str, Any]:
@@ -39,12 +74,11 @@ class InitialOrchestrator(Executor):
     """Initial orchestrator that analyzes input and plans execution."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "orchestrator_initial"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="InitialOrchestrator",
-            agent_description="Initial orchestrator for workflow planning"
+            agent_description="Initial orchestrator for workflow planning",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -75,12 +109,11 @@ class DataPreprocessor(Executor):
     """Executor for data preprocessing."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "preprocessor"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="DataPreprocessor",
-            agent_description="Data preprocessing agent"
+            agent_description="Data preprocessing agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -107,12 +140,11 @@ class SentimentAnalyzer(Executor):
     """Sentiment analysis executor."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "sentiment"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="SentimentAnalyzer",
-            agent_description="Sentiment analysis agent"
+            agent_description="Sentiment analysis agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -135,12 +167,11 @@ class TopicExtractor(Executor):
     """Topic extraction executor."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "topics"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="TopicExtractor",
-            agent_description="Topic extraction agent"
+            agent_description="Topic extraction agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -163,12 +194,11 @@ class AnomalyDetector(Executor):
     """Anomaly detection executor."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "anomaly"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="AnomalyDetector",
-            agent_description="Anomaly detection agent"
+            agent_description="Anomaly detection agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -191,12 +221,11 @@ class CompetitiveIntelligence(Executor):
     """Competitive intelligence executor."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "competitive"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="CompetitiveIntelligence",
-            agent_description="Competitive intelligence agent"
+            agent_description="Competitive intelligence agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -222,12 +251,11 @@ class InsightMiner(Executor):
     """Aggregates parallel results and mines insights (fan-in aggregator)."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "insights"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="InsightMiner",
-            agent_description="Insight mining agent"
+            agent_description="Insight mining agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -268,12 +296,11 @@ class PriorityRanker(Executor):
     """Priority ranking executor."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "priority"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="PriorityRanker",
-            agent_description="Priority ranking agent"
+            agent_description="Priority ranking agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -295,12 +322,11 @@ class ActionGenerator(Executor):
     """Action item generator executor."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "actions"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="ActionGenerator",
-            agent_description="Action generation agent"
+            agent_description="Action generation agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -326,12 +352,11 @@ class ReportGenerator(Executor):
     """Final report generator (fan-in aggregator)."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "reporter"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="ReportGenerator",
-            agent_description="Report generation agent"
+            agent_description="Report generation agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,
@@ -405,12 +430,11 @@ class FinalOrchestrator(Executor):
     """Final orchestrator review."""
 
     def __init__(self, credential: DefaultAzureCredential, id: str = "orchestrator_final"):
-        chat_client = AzureAIAgentClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            model_deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        chat_client = create_agent_client_with_timeout(
             credential=credential,
             agent_name="FinalOrchestrator",
-            agent_description="Final orchestrator review agent"
+            agent_description="Final orchestrator review agent",
+            timeout_seconds=120
         )
         self.agent = ChatAgent(
             chat_client=chat_client,

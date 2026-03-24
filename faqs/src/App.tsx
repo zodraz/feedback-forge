@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import './App.css'
 
 // Load API URL from environment variables
-const API_BASE_URL = import.meta.env.PROD
-  ? "https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
-  : "http://localhost:8081/api"
+// const API_BASE_URL = import.meta.env.PROD
+//   ? "https://feedbackforge-backend.ashycliff-a7a13cfc.swedencentral.azurecontainerapps.io/api"
+//   : "http://localhost:8081/api"
+
+const API_BASE_URL = "http://localhost:8081/api"
 
 interface FaqItem {
   question: string

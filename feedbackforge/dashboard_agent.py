@@ -13,8 +13,8 @@ from agent_framework import ChatAgent
 from azure.identity.aio import DefaultAzureCredential
 from agent_framework.azure import AzureAIAgentClient
 from .data_store import feedback_store
-from agent_framework.microsoft import PurviewPolicyMiddleware, PurviewSettings
-from azure.identity import InteractiveBrowserCredential
+# from agent_framework.microsoft import PurviewPolicyMiddleware, PurviewSettings
+# from azure.identity import InteractiveBrowserCredential
 
 from .chat_tools import (
     get_weekly_summary,
@@ -231,21 +231,22 @@ async def create_dashboard_agent() -> ChatAgent:
         logger.info(f"   Project endpoint: {required_env_vars['AZURE_AI_PROJECT_ENDPOINT']}")
         logger.info(f"   Model deployment: {required_env_vars['AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME']}")
 
-        purview_middleware = PurviewPolicyMiddleware(
-            credential=InteractiveBrowserCredential(
-                client_id="required_env_vars['AZURE_CLIENT_ID']",
-            ),
-            settings=PurviewSettings(app_name="FeedbackForge")
-        )
-        
+        # NOTE: Purview middleware disabled - InteractiveBrowserCredential doesn't work in Docker/server environments
+        # purview_middleware = PurviewPolicyMiddleware(
+        #     credential=InteractiveBrowserCredential(
+        #         client_id=os.environ.get('AZURE_CLIENT_ID'),
+        #     ),
+        #     settings=PurviewSettings(app_name="FeedbackForge")
+        # )
+
         credential = DefaultAzureCredential()
         chat_client = AzureAIAgentClient(
             project_endpoint=required_env_vars["AZURE_AI_PROJECT_ENDPOINT"],
             model_deployment_name=required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
             credential=credential,
             agent_name="FeedbackForge",
-            agent_description="Executive Dashboard Assistant for customer feedback analysis",
-            middleware=[purview_middleware]
+            agent_description="Executive Dashboard Assistant for customer feedback analysis"
+            # middleware=[purview_middleware]  # Disabled - causes issues in containerized environments
         )
         logger.info("✅ Chat client created successfully")
     except Exception as e:
@@ -281,6 +282,10 @@ async def create_dashboard_agent() -> ChatAgent:
             tool_name = getattr(tool, '__name__', getattr(tool, 'name', str(tool)))
             logger.info(f"      - {tool_name}")
 
+        # Validate instructions are not empty
+        if not AGENT_INSTRUCTIONS or not AGENT_INSTRUCTIONS.strip():
+            raise ValueError("AGENT_INSTRUCTIONS cannot be empty")
+
         agent = ChatAgent(
             chat_client=chat_client,
             instructions=AGENT_INSTRUCTIONS,
@@ -290,21 +295,8 @@ async def create_dashboard_agent() -> ChatAgent:
             tools=TOOLS
         )
         logger.info(f"✅ ChatAgent created successfully: {agent.name}")
-
-        # Wrap the agent's run method to catch errors
-        original_run = agent.run
-
-        async def wrapped_run(*args, **kwargs):
-            try:
-                logger.debug(f"🏃 Agent run called with args: {args[:50] if args else 'none'}...")
-                result = await original_run(*args, **kwargs)
-                logger.debug(f"✅ Agent run completed successfully")
-                return result
-            except Exception as e:
-                logger.error(f"❌ Error in agent.run(): {type(e).__name__}: {e}", exc_info=True)
-                raise
-
-        agent.run = wrapped_run
+        logger.debug(f"   Instructions length: {len(AGENT_INSTRUCTIONS)} characters")
+        logger.debug(f"   Tools count: {len(TOOLS)}")
 
         return agent
     except Exception as e:

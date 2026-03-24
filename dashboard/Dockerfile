@@ -6,6 +6,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Accept build arguments for API URLs (optional - defaults to localhost)
+ARG VITE_API_BASE_URL
+ARG VITE_AG_UI_URL
+
+# Set as environment variables for Vite build only if provided
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_AG_UI_URL=${VITE_AG_UI_URL}
+
 # Copy package files
 COPY package*.json ./
 
@@ -15,7 +23,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application (Vite will use the ENV variables)
 RUN npm run build
 
 # Stage 2: Production
