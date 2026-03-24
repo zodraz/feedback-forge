@@ -44,6 +44,9 @@ async def create_agent_with_ai_project(
     endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
     deployment = os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"]
 
+    # Extract deployment name from connection/deployment format if present
+    deployment_name = deployment.split('/')[-1] if '/' in deployment else deployment
+
     # Create AI Project client
     project = AIProjectClient(
         endpoint=endpoint,
@@ -54,13 +57,17 @@ async def create_agent_with_ai_project(
     agent_version = await project.agents.create_version(
         agent_name=agent_name,
         definition=PromptAgentDefinition(
-            model=deployment,
+            model=deployment_name,
             instructions=instructions,
         ),
     )
 
     # Create adapter
-    chat_client = AIProjectChatClient(project=project, agent_version=agent_version)
+    chat_client = AIProjectChatClient(
+        project=project,
+        agent_version=agent_version,
+        model=deployment
+    )
 
     # Create ChatAgent
     agent = ChatAgent(

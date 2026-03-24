@@ -62,7 +62,24 @@ function Header() {
   );
 }
 
+interface ConversationSummary {
+  thread_id: string;
+  message_count: number;
+  metadata: {
+    title?: string;
+    created_at?: string;
+  };
+  updated_at: string;
+  created_at: string;
+}
+
 function Sidebar() {
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+
+  const userId = localStorage.getItem('feedbackforge-user-id') || '';
+  const currentThreadId = localStorage.getItem('feedbackforge-thread-id') || '';
+
   const quickActions = [
     { icon: "📈", label: "Weekly Summary", query: "Show me this week's feedback summary" },
     { icon: "🔥", label: "Top Issues", query: "What are the top issues this week?" },
@@ -78,8 +95,61 @@ function Sidebar() {
     { icon: "🎫", label: "Create Tickets", query: "Create tickets for the critical issues" },
   ];
 
+  // Load conversations on mount
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!userId) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/sessions?user_id=${userId}&limit=20`);
+        if (response.ok) {
+          const data = await response.json();
+          setConversations(data.sessions || []);
+        }
+      } catch (error) {
+        console.error("Failed to load conversations:", error);
+      } finally {
+        setIsLoadingConversations(false);
+      }
+    };
+
+    loadConversations();
+  }, [userId]);
+
+  const loadConversation = (threadId: string) => {
+    localStorage.setItem('feedbackforge-thread-id', threadId);
+    window.location.reload();
+  };
+
   return (
     <aside className="sidebar">
+      <div className="conversations-section">
+        <h2>Conversations</h2>
+        <div className="conversation-list">
+          {isLoadingConversations ? (
+            <div className="conversation-item loading">Loading...</div>
+          ) : conversations.length === 0 ? (
+            <div className="conversation-item empty">No conversations yet</div>
+          ) : (
+            conversations.map((conv) => (
+              <button
+                key={conv.thread_id}
+                className={`conversation-item ${conv.thread_id === currentThreadId ? 'active' : ''}`}
+                onClick={() => loadConversation(conv.thread_id)}
+                title={conv.metadata.title || 'Untitled conversation'}
+              >
+                <div className="conversation-title">
+                  {conv.metadata.title || 'Untitled'}
+                </div>
+                <div className="conversation-meta">
+                  {conv.message_count} messages • {new Date(conv.updated_at).toLocaleDateString()}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
       <h2>Quick Actions</h2>
       <div className="quick-actions">
         {quickActions.map((action, index) => (

@@ -76,6 +76,9 @@ class DataSyncAgent:
         """Create the underlying ChatAgent with LLM using AIProjectClient."""
         logger.info("🧠 Creating ChatAgent with Azure AI Projects SDK...")
 
+        # Extract deployment name from connection/deployment format if present
+        deployment_name = deployment.split('/')[-1] if '/' in deployment else deployment
+
         credential = DefaultAzureCredential()
 
         # Create AI Project client using new AIProjectClient pattern
@@ -89,14 +92,18 @@ class DataSyncAgent:
         agent_version = await project.agents.create_version(
             agent_name="DataSyncAgent",
             definition=PromptAgentDefinition(
-                model=deployment,
+                model=deployment_name,
                 instructions=SYNC_AGENT_INSTRUCTIONS,
             ),
         )
         logger.info(f"✅ Agent created (id: {agent_version.id}, name: {agent_version.name}, version: {agent_version.version})")
 
         # Create adapter to bridge AIProjectClient with ChatClientProtocol
-        chat_client = AIProjectChatClient(project=project, agent_version=agent_version)
+        chat_client = AIProjectChatClient(
+            project=project,
+            agent_version=agent_version,
+            model=deployment
+        )
 
         # Create ChatAgent with LLM intelligence and tools
         agent = ChatAgent(
@@ -582,6 +589,9 @@ async def create_sync_agent() -> ChatAgent:
     assert deployment is not None
 
     try:
+        # Extract deployment name from connection/deployment format if present
+        deployment_name = deployment.split('/')[-1] if '/' in deployment else deployment
+
         credential = DefaultAzureCredential()
 
         # Create AI Project client
@@ -595,14 +605,18 @@ async def create_sync_agent() -> ChatAgent:
         agent_version = await project.agents.create_version(
             agent_name="DataSyncAgent",
             definition=PromptAgentDefinition(
-                model=deployment,
+                model=deployment_name,
                 instructions=SYNC_AGENT_INSTRUCTIONS,
             ),
         )
         logger.info(f"✅ Agent created (id: {agent_version.id}, name: {agent_version.name}, version: {agent_version.version})")
 
         # Create adapter
-        chat_client = AIProjectChatClient(project=project, agent_version=agent_version)
+        chat_client = AIProjectChatClient(
+            project=project,
+            agent_version=agent_version,
+            model=deployment_name
+        )
 
         # Create agent with sync tools
         agent = ChatAgent(

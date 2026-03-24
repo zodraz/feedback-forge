@@ -253,17 +253,25 @@ async def create_dashboard_agent() -> ChatAgent:
         # Create agent using the new agents API (matching JavaScript createVersion pattern)
         logger.info("🤖 Creating agent version...")
 
+        # Extract deployment name from connection/deployment format if present
+        deployment_full = str(required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"])
+        deployment_name = deployment_full.split('/')[-1] if '/' in deployment_full else deployment_full
+
         agent_version = await project.agents.create_version(
             agent_name= "FeedbackForge",
             definition=PromptAgentDefinition(
-                model=str(required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"]),
+                model=deployment_name,
                 instructions=AGENT_INSTRUCTIONS,
             ),
         )
         logger.info(f"✅ Agent created (id: {agent_version.id}, name: {agent_version.name}, version: {agent_version.version})")
 
         # Create adapter to bridge AIProjectClient with ChatClientProtocol
-        chat_client = AIProjectChatClient(project=project, agent_version=agent_version)
+        chat_client = AIProjectChatClient(
+            project=project,
+            agent_version=agent_version,
+            model=str(required_env_vars["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"])
+        )
         logger.info("✅ Chat client adapter created")
     except Exception as e:
         logger.error(f"❌ Failed to create chat client: {e}", exc_info=True)

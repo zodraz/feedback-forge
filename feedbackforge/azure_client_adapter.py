@@ -6,8 +6,11 @@ Adapter class that bridges the new Azure AI Projects SDK (AIProjectClient) with
 the agent_framework's ChatAgent which expects a ChatClientProtocol interface.
 """
 
+import logging
 from typing import Any, AsyncIterator
 from azure.ai.projects.aio import AIProjectClient
+
+logger = logging.getLogger(__name__)
 
 
 class MessageWrapper:
@@ -93,17 +96,19 @@ class AIProjectChatClient:
     - openAIClient.responses.create() → generates agent responses
     """
 
-    def __init__(self, project: AIProjectClient, agent_version):
+    def __init__(self, project: AIProjectClient, agent_version, model: str):
         self.project = project
         self.agent_version = agent_version
+        # Extract deployment name from connection/deployment format if present
+        # e.g., "feedbackforgev3-connection/gpt-5.1-chat" -> "gpt-5.1-chat"
+        self.model = model.split('/')[-1] if '/' in model else model
         self.additional_properties: dict[str, Any] = {}
         self.openai_client = project.get_openai_client()
 
+        logger.info(f"✅ AIProjectChatClient initialized with model: {self.model} (original: {model})")
+
     async def get_response(self, messages: Any, **kwargs: Any) -> Any:
         """Get a response from the agent for the given messages."""
-        # Filter out agent_framework specific kwargs that Azure SDK doesn't accept
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in ['chat_options', 'thread']}
-
         # Create a conversation with initial messages
         conversation_items = []
         if isinstance(messages, list):
@@ -132,20 +137,29 @@ class AIProjectChatClient:
             items=conversation_items
         )
 
-        response = await self.openai_client.responses.create(
-            conversation=conversation.id,
-            extra_body={"agent_reference": {"name": self.agent_version.name, "type": "agent_reference"}},
-            **filtered_kwargs
-        )
+        # Prepare request parameters with agent reference and model
+        # The Azure AI Gateway requires BOTH agent_reference and model parameter
+        extra_body_dict = {
+            "agent_reference": {
+                "name": self.agent_version.name,
+                "type": "agent_reference"
+            }
+        }
+
+        request_params = {
+            "conversation": conversation.id,
+            "model": self.model,  # Required by Azure AI Gateway for routing
+            "extra_body": extra_body_dict
+        }
+
+        logger.debug(f"Creating response for conversation {conversation.id}, model={self.model}, agent={self.agent_version.name}")
+        response = await self.openai_client.responses.create(**request_params)
 
         # Wrap response to add conversation_id for agent_framework compatibility
         return ResponseWrapper(response)
 
     async def get_streaming_response(self, messages: Any, **kwargs: Any) -> AsyncIterator[Any]:
         """Get a streaming response from the agent for the given messages."""
-        # Filter out agent_framework specific kwargs that Azure SDK doesn't accept
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in ['chat_options', 'thread']}
-
         # Create a conversation with initial messages
         conversation_items = []
         if isinstance(messages, list):
@@ -174,11 +188,23 @@ class AIProjectChatClient:
             items=conversation_items
         )
 
-        stream = await self.openai_client.responses.create(
-            conversation=conversation.id,
-            extra_body={"agent_reference": {"name": self.agent_version.name, "type": "agent_reference"}},
-            **filtered_kwargs
-        )
+        # Prepare streaming request parameters
+        # The Azure AI Gateway requires BOTH agent_reference and model parameter
+        extra_body_dict = {
+            "agent_reference": {
+                "name": self.agent_version.name,
+                "type": "agent_reference"
+            }
+        }
+
+        request_params = {
+            "conversation": conversation.id,
+            "model": self.model,  # Required by Azure AI Gateway for routing
+            "extra_body": extra_body_dict
+        }
+
+        logger.debug(f"Creating streaming response for conversation {conversation.id}, model={self.model}, agent={self.agent_version.name}")
+        stream = await self.openai_client.responses.create(**request_params)
 
         async for chunk in stream:
             yield chunk
